@@ -23,3 +23,8 @@ Changed session management URL from /Session/User to /Session/Self/User
 - Adjusted to the change of API in express-user version 0.0.1-alpha.5
 - Added express-access-control as a dependency
 - Cleaned up the dev dependencies (not needed until there are tests)
+
+0.0.1-alpha.3
+-------------
+
+- Added support for /Users/:Field/:ID/Count/.
