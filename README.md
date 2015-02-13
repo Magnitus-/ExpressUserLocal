@@ -35,6 +35,32 @@ Options
 
 - BruteForceRoute: Route used to handle brute-force attacks on password dependant requests ("PUT /Session/Self/User", "PATCH /User/Self" and "DELETE /User/Self"). See the example in the express-user project for an implementation using express-brute.
 
+- UserSchema: Schema object that specifies a user's fields and their properties. It defaults to this (see user-properties project for details):
+
+```javascript
+{
+    'Username': {
+        'Required': true,
+        'Unique': true,
+        'Mutable': false,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&UsernameRegex.test(Value)}
+    },
+    'Email': {
+        'Required': true,
+        'Unique': true,
+        'Private': true,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&EmailRegex.test(Value)}
+    },
+    'Password': {
+        'Required': true,
+        'Private': true,
+        'Secret': true,
+        'Retrievable': false,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&PasswordRegex.test(Value)}
+    }
+}
+```
+
 History
 =======
 
@@ -72,3 +98,8 @@ Changed session management URL from /Session/User to /Session/Self/User
 - Added user-properties dependency
 - Added customization for users' fields
 - Made the expected format for body parameters (more specifically in regard to identification/authentification vs updating) more uniform across request types.
+
+0.0.1.alpha.6
+-------------
+
+Added doc for the latest feature of 0.0.1.alpha.5
