@@ -65,3 +65,10 @@ Changed session management URL from /Session/User to /Session/Self/User
 
 - Increased documentation details
 - Added option to pass a route to handle brute force.
+
+0.0.1.alpha.5
+-------------
+
+- Added user-properties dependency
+- Added customization for users' fields
+- Made the expected format for body parameters (more specifically in regard to identification/authentification vs updating) more uniform across request types.
