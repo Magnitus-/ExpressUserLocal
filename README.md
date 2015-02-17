@@ -61,6 +61,32 @@ Options
 }
 ```
 
+- CsrfRoute: Route that enforces Csrf token verification (see the example in express-user for an implementation making use of the csurf project)
+
+- MinimalCsrf: Boolean value that defaults to true.
+
+With this default, only the admin "PATCH /User/:Field/:ID" and "DELETE /User/:Field/:ID" requests check for the Csrf token as they are the main request of interests where csrf protection would actually mitigate an attack.
+
+However, if MinimalCsrf is set to false, the following requests also check for the csrf token:
+
+-PUT /Users
+
+Probably pointless to protect. A user motivated to abuse the account creation may as well create a standalone script that fetches the login form and accompanying csrf token, parse the form to retrieve the token and perform the request.
+
+-PUT /Session/Self/User
+
+This is the login. If another website convince a user to input his credentials for your web site on theirs, his account is already compromised anyways.
+
+-DELETE /Session/Self/User
+
+Yes, technically, some third party web site could repeatedly perform ajax requests to force your users to logout while they run the offending web page in their browser (perhaps in a tab in the background).
+
+However, someone that motivated to negatively impact the experience of your users may as well forgo doing something that would only impact a tiny fraction of your users (and would probably more easily be traceable to him) and opt for a full blow DoS attack instead.
+
+-PATCH /User/Self and DELETE /User/Self
+
+These already require the user to input his password (to modify or delete his account respectively) making the csrf token check redundant. Besides, as with the login, if a third party website convinces your user to input his password for your web site on theirs, his account is already compromised.
+
 History
 =======
 
@@ -103,3 +129,8 @@ Changed session management URL from /Session/User to /Session/Self/User
 -------------
 
 Added doc for the latest feature of 0.0.1.alpha.5
+
+0.0.1-alpha.7
+-------------
+
+- Added csrf support
