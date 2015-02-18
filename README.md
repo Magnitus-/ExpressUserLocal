@@ -15,7 +15,7 @@ Usage
 
 //Some code
 
-var ExpressUser = require('express-user);
+var ExpressUser = require('express-user');
 var ExpressUserLocal = require('express-user-local');
 
 var UserLocal = ExpressUserLocal(UserLocalOptions);                   //More details on available options below
@@ -61,31 +61,30 @@ Options
 }
 ```
 
-- CsrfRoute: Route that enforces Csrf token verification (see the example in express-user for an implementation making use of the csurf project)
+- CsrfRoute: Route that enforces Csrf token verification (see the example in express-user for an implementation making use of the csurf project). It can be set to null (if you want to fine tune csrf protection yourself for example).
 
 - MinimalCsrf: Boolean value that defaults to true.
 
-With this default, only the admin "PATCH /User/:Field/:ID" and "DELETE /User/:Field/:ID" requests check for the Csrf token as they are the main request of interests where csrf protection would actually mitigate an attack.
+With this default, the admin "PATCH /User/:Field/:ID" and "DELETE /User/:Field/:ID" requests check for the Csrf token as well as the "PUT /Session/Self/User" and "DELETE /Session/Self/User" requests.
 
-However, if MinimalCsrf is set to false, the following requests also check for the csrf token:
+The both requests are protected because they are the main attack surface for csrf attacks.
+
+login/logout have been added to the default protection to foil potential attack vectors if an attacker managed to login someone under his account and to prevent potential loss of trust from users if an attacker manages to log them out from an external web page.
+
+If MinimalCsrf is set to false, the following requests also check for the csrf token:
 
 -PUT /Users
 
 Probably pointless to protect. A user motivated to abuse the account creation may as well create a standalone script that fetches the login form and accompanying csrf token, parse the form to retrieve the token and perform the request.
 
--PUT /Session/Self/User
-
-This is the login. If another website convince a user to input his credentials for your web site on theirs, his account is already compromised anyways.
-
--DELETE /Session/Self/User
-
-Yes, technically, some third party web site could repeatedly perform ajax requests to force your users to logout while they run the offending web page in their browser (perhaps in a tab in the background).
-
-However, someone that motivated to negatively impact the experience of your users may as well forgo doing something that would only impact a tiny fraction of your users (and would probably more easily be traceable to him) and opt for a full blow DoS attack instead.
-
 -PATCH /User/Self and DELETE /User/Self
 
 These already require the user to input his password (to modify or delete his account respectively) making the csrf token check redundant. Besides, as with the login, if a third party website convinces your user to input his password for your web site on theirs, his account is already compromised.
+
+Example
+=======
+
+While keeping in mind that details will probably change in the future, you can play with what is currently there, by running the Example.js server (you'll need the dev dependencies to run it) and going to the following adress in your browser: http://127.0.0.1:8080/
 
 History
 =======
@@ -133,4 +132,12 @@ Added doc for the latest feature of 0.0.1.alpha.5
 0.0.1-alpha.7
 -------------
 
-- Added csrf support
+Added csrf support
+
+0.0.1-alpha.8
+--------------
+
+- Added Login/Logout to default Csrf protection.
+- Moved express-user/express-user-local example to this project
+- Added a bit of documentation
+- Removed express as a direct dependency

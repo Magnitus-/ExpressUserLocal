@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<!--Copyright (c) 2015 Eric Vallee <eric_vallee2003@yahoo.ca>
+MIT License: https://raw.githubusercontent.com/Magnitus-/ExpressUser/master/License.txt-->
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Express User Example</title>
+    </head>
+    <body>
+        <section class="Login">
+            <form>
+                <h2>Login</h2>
+                <fieldset class="User">
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                    <label>Password:</label>
+                    <input type="text" name="Password" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="Logout">
+            <form>
+                <h2>Logout</h2>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="Add">
+            <form>
+                <h2>Create Profile</h2>
+                <fieldset class="User">
+                    <label>Username:</label>
+                    <input type="text" name="Username" />
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                    <label>Password:</label>
+                    <input type="text" name="Password" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+            <p class='Error'></p>
+        </section>
+        <section class="Modify">
+            <form>
+                <h2>Change Profile</h2>
+                <fieldset class="Url">
+                    <label>URL Username:</label>
+                    <input type="text" name="Username" />
+                    <label>URL Email:</label>
+                    <input type="text" name="Email" />
+                </fieldset>
+                <fieldset class="Update">
+                    <label>Username:</label>
+                    <input type="text" name="Username" />
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                    <label>Password:</label>
+                    <input type="text" name="Password" />
+                </fieldset>
+                <fieldset class="User">
+                    <label>Old Password:</label>
+                    <input type="text" name="Password" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="Delete">
+            <form>
+                <h2>Delete Profile</h2>
+                <fieldset class="Url">
+                    <label>Username:</label>
+                    <input type="text" name="Username" />
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                </fieldset>
+                <fieldset class="User">
+                    <label>Password:</label>
+                    <input type="text" name="Password" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="Get">
+            <form>
+                <h2>Get Profile</h2>
+                <fieldset class="Url">
+                    <label>Username:</label>
+                    <input type="text" name="Username" />
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                </fieldset>
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="Elevate">
+            <form>
+                <h2>Elevate Profile</h2>
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="GetSession">
+            <form>
+                <h2>Get Session User</h2>
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="Output">
+            <h2>Output</h2>
+            <output></output>
+        </section>
+        <!--I unapologetically love jQuery's selector/event API. Sue me.-->
+        <script src="http://code.jquery.com/jquery-2.1.1.js"></script>
+        <script src="/Static/ClientLogic.js"></script>
+    </body>
+</html>
