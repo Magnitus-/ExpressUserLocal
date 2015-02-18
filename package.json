@@ -46,6 +46,7 @@
   },
   "license": "MIT",
   "directories": {
+    "example": "example",
     "test": "test"
   },
   "scripts": {
