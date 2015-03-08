@@ -95,6 +95,11 @@ jQuery.fn.Send = function() {
         Method = 'POST';
         URL = '/User/Self/Memberships/Admin';
     }
+    else if(Section=='VerifyEmail')
+    {
+        Method= 'PUT';
+        URL = '/User/Self/Memberships/Validated';
+    }
     
     if(Data['Url'])
     {
@@ -151,6 +156,6 @@ jQuery('body').on('keyup', '.Add input[name=Username]', function(Event) {
                 console.log('Request to '+Input.val()+' failed. Return code is '+XHR.status+'.');
             });
         }
-    }, 1000)
+    }, 1000);
 });
 

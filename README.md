@@ -7,6 +7,13 @@ Like express-user, this library is currently prototypical and subject to future 
 
 Future tests and doc to come once the library is finalized.
 
+Known Bug(s)
+============
+
+Emailing the user needs to be moved after successful profile insertion in the database (currently done before).
+
+This will require modification of express-user project to accept hooks for tasks to perform after database operations.
+
 Usage
 =====
 
@@ -33,7 +40,17 @@ Options
 
 - PasswordRegex: Regular expression used to validate passwords. Defaults to any characters, between 8 and 20 characters long.
 
-- BruteForceRoute: Route used to handle brute-force attacks on password dependant requests ("PUT /Session/Self/User", "PATCH /User/Self" and "DELETE /User/Self"). See the example in the express-user project for an implementation using express-brute.
+- BruteForceRoute: Route used to handle brute-force attacks on password or email token dependant requests ("PUT /Session/Self/User", "PATCH /User/Self", "DELETE /User/Self" and "PUT /User/Self/Memberships/Validated"). See the example in the express-user project for an implementation using express-brute.
+
+- EmailTokenGen: Call that gets used to generate email tokens. It takes the following form: function(callback), where Callback is passed any error (or null) as its first argument and the generated email token as the second.
+
+By default, this option is passed: function(Callback) {Callback(null, Uid(20));}, where Uid, is the sync method of the uid-safe project (the asynchronous method has specific dependencies that makes it less portable)
+
+- SendEmail: Call that sends an email. It takes the form of: function(User, Token, Callback), where user is an object containing the field values of the newly registered user, Token is the email token and Callback is the callback, expecting for its argument an error if any.
+
+It has no default and if not present, email tokens will be disabled.
+
+- HideSecret: Specifies that secret fields shouldn't be returned for GET requests. Defaults to True. Very important to prevent users from seeing their email verification token from their account.
 
 - UserSchema: Schema object that specifies a user's fields and their properties. It defaults to this (see user-properties project for details):
 
@@ -57,6 +74,12 @@ Options
         'Secret': true,
         'Retrievable': false,
         'Description': function(Value) {return (typeof(Value)!='undefined')&&PasswordRegex.test(Value)}
+    },
+    'EmailToken': {
+        'Required': true,
+        'Privacy': UserProperties.Privacy.Secret,
+        'Retrievable': false,
+        'Access': 'Email'
     }
 }
 ```
@@ -65,7 +88,7 @@ Options
 
 - MinimalCsrf: Boolean value that defaults to true.
 
-With this default, the admin "PATCH /User/:Field/:ID" and "DELETE /User/:Field/:ID" requests check for the Csrf token as well as the "PUT /Session/Self/User" and "DELETE /Session/Self/User" requests.
+With this default, the admin "PATCH /User/:Field/:ID" and "DELETE /User/:Field/:ID" requests check for the Csrf token as well as the "PUT /Session/Self/User", "DELETE /Session/Self/User" and "PUT /User/Self/Memberships/Validated" requests.
 
 The both requests are protected because they are the main attack surface for csrf attacks.
 
@@ -85,6 +108,8 @@ Example
 =======
 
 While keeping in mind that details will probably change in the future, you can play with what is currently there, by running the Example.js server (you'll need the dev dependencies to run it) and going to the following adress in your browser: http://127.0.0.1:8080/
+
+In order to avoid an email server dependency just to run the example (days of fun for the uninitiated), the example uses a mock call that justs prints the email address and token of a newly registered user on the console rather than try to send an actual email.
 
 History
 =======
@@ -135,9 +160,22 @@ Added doc for the latest feature of 0.0.1.alpha.5
 Added csrf support
 
 0.0.1-alpha.8
---------------
+-------------
 
 - Added Login/Logout to default Csrf protection.
 - Moved express-user/express-user-local example to this project
 - Added a bit of documentation
 - Removed express as a direct dependency
+
+0.0.1-alpha.9
+-------------
+
+- Added uid-safe dependency
+- Updated user-properties dependency to version 2.0.0
+- Updated dev dependency of express-user to version 0.0.1-alpha.13
+- Modified default user schema to include a EmailToken field.
+- Added support to '/User/Self/Memberships/Validated' route to submit email token.
+- Modified the example to work with email tokens.
+- Added 2 new options to constructor to accomodate email validation customization.
+- Added new option to constructor to hide hidden fields from GET requests (HideSecrets) and added handler to specify to express-user which fields should be hidden.
+

@@ -36,7 +36,12 @@ MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {nati
     DB.createCollection('PasswordAccess', {'w': 1}, function(Err, BruteCollection) {
         var BruteStore = new BruteStoreAPI(function (Ready) {Ready(BruteCollection)});
         var ExpressBrute = new ExpressBruteAPI(BruteStore, ExpressBruteOptions);
-        var ExpressUserLocalOptions = {'BruteForceRoute': ExpressBrute.prevent, 'CsrfRoute': CsrfRoute};
+        function MockSendEmail(User, Token, Callback)
+        {
+            console.log('Email: '+User['Email']+"; Token: "+Token);
+            Callback(null);
+        }
+        var ExpressUserLocalOptions = {'BruteForceRoute': ExpressBrute.prevent, 'CsrfRoute': CsrfRoute, 'SendEmail': MockSendEmail};
         UserStoreAPI(DB, {'Email': {'Unique': 1, 'NotNull': 1}, 'Username': {'Unique': 1, 'NotNull': 1}, 'Password': {'NotNull': 1}}, function(Err, UserStore) {
             SessionStoreAPI(DB, function(Err, SessionStore) {
                 

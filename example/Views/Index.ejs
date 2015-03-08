@@ -97,6 +97,17 @@ MIT License: https://raw.githubusercontent.com/Magnitus-/ExpressUser/master/Lice
                 <button>Submit</button>
             </form>
         </section>
+        <Section class="VerifyEmail">
+            <form>
+                <h2>Verify Email</h2>
+                <fieldset class="User">
+                    <label>Email Token:</label>
+                    <input type="text" name="EmailToken" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
         <section class="Elevate">
             <form>
                 <h2>Elevate Profile</h2>
