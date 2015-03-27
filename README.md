@@ -10,9 +10,7 @@ Future tests and doc to come once the library is finalized.
 Known Bug(s)
 ============
 
-Emailing the user needs to be moved after successful profile insertion in the database (currently done before).
-
-This will require modification of express-user project to accept hooks for tasks to perform after database operations.
+...
 
 Usage
 =====
@@ -42,14 +40,6 @@ Options
 
 - BruteForceRoute: Route used to handle brute-force attacks on password or email token dependant requests ("PUT /Session/Self/User", "PATCH /User/Self", "DELETE /User/Self" and "PUT /User/Self/Memberships/Validated"). See the example in the express-user project for an implementation using express-brute.
 
-- EmailTokenGen: Call that gets used to generate email tokens. It takes the following form: function(callback), where Callback is passed any error (or null) as its first argument and the generated email token as the second.
-
-By default, this option is passed: function(Callback) {Callback(null, Uid(20));}, where Uid, is the sync method of the uid-safe project (the asynchronous method has specific dependencies that makes it less portable)
-
-- SendEmail: Call that sends an email. It takes the form of: function(User, Token, Callback), where user is an object containing the field values of the newly registered user, Token is the email token and Callback is the callback, expecting for its argument an error if any.
-
-It has no default and if not present, email tokens will be disabled.
-
 - HideSecret: Specifies that secret fields shouldn't be returned for GET requests. Defaults to True. Very important to prevent users from seeing their email verification token from their account.
 
 - UserSchema: Schema object that specifies a user's fields and their properties. It defaults to this (see user-properties project for details):
@@ -60,26 +50,29 @@ It has no default and if not present, email tokens will be disabled.
         'Required': true,
         'Unique': true,
         'Mutable': false,
-        'Description': function(Value) {return (typeof(Value)!='undefined')&&UsernameRegex.test(Value)}
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Username'].test(Value)}
     },
     'Email': {
         'Required': true,
         'Unique': true,
-        'Private': true,
-        'Description': function(Value) {return (typeof(Value)!='undefined')&&EmailRegex.test(Value)}
+        'Privacy': UserProperties.Privacy.Private,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Email'].test(Value)}
     },
     'Password': {
         'Required': true,
-        'Private': true,
-        'Secret': true,
+        'Privacy': UserProperties.Privacy.Secret,
         'Retrievable': false,
-        'Description': function(Value) {return (typeof(Value)!='undefined')&&PasswordRegex.test(Value)}
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Password'].test(Value)},
+        'Sources': ['User', 'Auto'],
+        'Generator': function(Callback) {Callback(null, Uid(15));}
     },
     'EmailToken': {
         'Required': true,
         'Privacy': UserProperties.Privacy.Secret,
         'Retrievable': false,
-        'Access': 'Email'
+        'Access': 'Email',
+        'Sources': ['Auto'],
+        'Generator': function(Callback) {Callback(null, Uid(20));}
     }
 }
 ```
@@ -179,3 +172,13 @@ Added csrf support
 - Added 2 new options to constructor to accomodate email validation customization.
 - Added new option to constructor to hide hidden fields from GET requests (HideSecrets) and added handler to specify to express-user which fields should be hidden.
 
+0.0.1-alpha.10
+--------------
+- Updated user-properties dependency to version 3.1.0.
+- Updated dev dependency of express-user to version 0.0.1-alpha.14
+- Updated default schema to take into account the new features of user-properties
+- Removed the EmailTokenGen constructor property, which is made redundant by new capacities in the schema
+- Added facilities to re-generate the Password and EmailToken.
+- Moved the SendMail option to Responder.
+- Added the express-user-local-basic project to dev dependencies.
+- Adapted example to changes.

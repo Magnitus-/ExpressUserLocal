@@ -14,6 +14,7 @@ var SessionStoreAPI = require('express-session-mongodb');
 var UserStoreAPI = require('user-store');
 var ExpressUserLocal = require('../lib/ExpressUserLocal');
 var ExpressUser = require('express-user');
+var ExpressUserResponder = require('express-user-local-basic');
 
 var ExpressBruteAPI = require('express-brute');
 var BruteStoreAPI = require('express-brute-mongo');
@@ -36,12 +37,27 @@ MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {nati
     DB.createCollection('PasswordAccess', {'w': 1}, function(Err, BruteCollection) {
         var BruteStore = new BruteStoreAPI(function (Ready) {Ready(BruteCollection)});
         var ExpressBrute = new ExpressBruteAPI(BruteStore, ExpressBruteOptions);
-        function MockSendEmail(User, Token, Callback)
+        function MockSendEmail(User, Update, Callback)
         {
-            console.log('Email: '+User['Email']+"; Token: "+Token);
+            if(Update)
+            {
+                if(Update.Password)
+                {
+                    console.log('MockEmail at '+User['Email']+". New Password: "+Update.Password);
+                }
+                else if(Update.EmailToken)
+                {
+                    console.log('MockEmail at '+User['Email']+". New EmailToken: "+Update.EmailToken);
+                }
+            }
+            else
+            {
+                console.log('MockEmail at '+User['Email']+". New User's EmailToken: "+User['EmailToken']);
+            }
             Callback(null);
         }
-        var ExpressUserLocalOptions = {'BruteForceRoute': ExpressBrute.prevent, 'CsrfRoute': CsrfRoute, 'SendEmail': MockSendEmail};
+        var ExpressUserResponderOptions = {'SendEmail': MockSendEmail};
+        var ExpressUserLocalOptions = {'BruteForceRoute': ExpressBrute.prevent, 'CsrfRoute': CsrfRoute};
         UserStoreAPI(DB, {'Email': {'Unique': 1, 'NotNull': 1}, 'Username': {'Unique': 1, 'NotNull': 1}, 'Password': {'NotNull': 1}}, function(Err, UserStore) {
             SessionStoreAPI(DB, function(Err, SessionStore) {
                 
@@ -55,7 +71,7 @@ MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {nati
                 App.use('/Static', Express.static(StaticPath));
                 App.use(BodyParser.json());
                 
-                var UserRouter = ExpressUser(UserStore, {'Validator': ExpressUserLocal(ExpressUserLocalOptions)});
+                var UserRouter = ExpressUser(UserStore, {'Validator': ExpressUserLocal(ExpressUserLocalOptions), 'Responder': ExpressUserResponder(ExpressUserResponderOptions)});
                 App.use(ExpressUser.SessionRoute(UserStore, '_id'));
                 App.use(UserRouter);
                 
@@ -107,7 +123,7 @@ MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {nati
                 App.use('/', function(Err, Req, Res, Next) {
                     if(Err.code !== 'EBADCSRFTOKEN') 
                     {
-                        next(Err);
+                        Next(Err);
                         return;
                     }
                     else
