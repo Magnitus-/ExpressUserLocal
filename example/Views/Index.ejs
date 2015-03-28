@@ -108,6 +108,28 @@ MIT License: https://raw.githubusercontent.com/Magnitus-/ExpressUser/master/Lice
                 <button>Submit</button>
             </form>
         </section>
+        <section class="RecoverEmailToken">
+            <form>
+                <h2>Recover Email Token</h2>
+                <fieldset class="Url">
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
+        <section class="RecoverPassword">
+            <form>
+                <h2>Recover Password</h2>
+                <fieldset class="Url">
+                    <label>Email:</label>
+                    <input type="text" name="Email" />
+                </fieldset>
+                <input type="hidden" name="_csrf" value="<%= CsrfToken %>">
+                <button>Submit</button>
+            </form>
+        </section>
         <section class="Elevate">
             <form>
                 <h2>Elevate Profile</h2>

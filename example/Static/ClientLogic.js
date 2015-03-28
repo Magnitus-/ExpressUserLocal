@@ -100,6 +100,11 @@ jQuery.fn.Send = function() {
         Method= 'PUT';
         URL = '/User/Self/Memberships/Validated';
     }
+    else if(Section=='RecoverEmailToken' || Section=='RecoverPassword')
+    {
+        Method= 'POST';
+        URL = '/User';
+    }
     
     if(Data['Url'])
     {
@@ -111,6 +116,15 @@ jQuery.fn.Send = function() {
         {
             URL = URL + '/Email/'+Data['Url']['Email'];
         }
+    }
+    
+    if(Section=='RecoverEmailToken')
+    {
+        URL = URL + '/EmailToken';
+    }
+    else if(Section=='RecoverPassword')
+    {
+        URL = URL + '/Password';
     }
     
     var Options = {'cache': false, 'type': Method};

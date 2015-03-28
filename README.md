@@ -182,3 +182,9 @@ Added csrf support
 - Moved the SendMail option to Responder.
 - Added the express-user-local-basic project to dev dependencies.
 - Adapted example to changes.
+
+0.0.1-alpha.11
+--------------
+
+- Fix bug that prevented /User/:Field/:ID/:SetField route from working
+- Implemented Password/Email Token recovery in the example.
