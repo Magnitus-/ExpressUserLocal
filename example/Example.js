@@ -123,6 +123,7 @@ MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {nati
                 App.use('/', function(Err, Req, Res, Next) {
                     if(Err.code !== 'EBADCSRFTOKEN') 
                     {
+                        console.log(Err);
                         Next(Err);
                         return;
                     }

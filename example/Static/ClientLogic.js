@@ -120,11 +120,11 @@ jQuery.fn.Send = function() {
     
     if(Section=='RecoverEmailToken')
     {
-        URL = URL + '/EmailToken';
+        URL = URL + '/Recovery/EmailToken';
     }
     else if(Section=='RecoverPassword')
     {
-        URL = URL + '/Password';
+        URL = URL + '/Recovery/Password';
     }
     
     var Options = {'cache': false, 'type': Method};

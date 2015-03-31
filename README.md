@@ -188,3 +188,12 @@ Added csrf support
 
 - Fix bug that prevented /User/:Field/:ID/:SetField route from working
 - Implemented Password/Email Token recovery in the example.
+
+0.0.1-alpha.12
+--------------
+
+- Updated dev dependendices for express-user and express-user-local-basic to versions 0.0.1-alpha.15 and 0.0.1-alpha.2 respectivelly
+- Updated library to be compatiable with route change in the 0.0.1-alpha.15 version of express-user
+- Replaced response logic by feedback to pass to Responder
+- Improved bad input handling for body structure of requests
+- Fixed bug that occurs when a email token generator that can fail fails.
