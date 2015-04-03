@@ -3,9 +3,7 @@ Express-User-Local
 
 Module to validate incoming requests using a local strategy (username, email, password) for the express-user library.
 
-Like express-user, this library is currently prototypical and subject to future change.
-
-Future tests and doc to come once the library is finalized.
+The structure is pretty stable at this point, but I'll keep the alpha label until unit tests and doc are finalized.
 
 Known Bug(s)
 ============
@@ -107,58 +105,41 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
-0.0.0 
------
+0.0.1-alpha.13
+--------------
 
-Initial prototype
+- Updated express-access-control dependency to version 2.0.0.
+- Updated express-user and express-user-local-bacic dev dependencies to version 1.0.0 and 0.0.1-alpha.3 respectively.
+- Added Roles option in the constructor.
+- Moved connection security route from express-user to this project.
+- Moved admin access verification routes from express-user to this project.
+- Updated dev dependency of user-store to version 1.3.0.
 
-0.0.1-alpha.1
--------------
+0.0.1-alpha.12
+--------------
 
-Changed session management URL from /Session/User to /Session/Self/User
+- Updated dev dependendices for express-user and express-user-local-basic to versions 0.0.1-alpha.15 and 0.0.1-alpha.2 respectivelly
+- Updated library to be compatiable with route change in the 0.0.1-alpha.15 version of express-user
+- Replaced response logic by feedback to pass to Responder
+- Improved bad input handling for body structure of requests
+- Fixed bug that occurs when a email token generator that can fail fails.
 
-0.0.1-alpha.2
--------------
+0.0.1-alpha.11
+--------------
 
-- Adjusted to the change of API in express-user version 0.0.1-alpha.5
-- Added express-access-control as a dependency
-- Cleaned up the dev dependencies (not needed until there are tests)
+- Fix bug that prevented /User/:Field/:ID/:SetField route from working
+- Implemented Password/Email Token recovery in the example.
 
-0.0.1-alpha.3
--------------
-
-- Added support for /Users/:Field/:ID/Count/.
-
-0.0.1.alpha.4
--------------
-
-- Increased documentation details
-- Added option to pass a route to handle brute force.
-
-0.0.1.alpha.5
--------------
-
-- Added user-properties dependency
-- Added customization for users' fields
-- Made the expected format for body parameters (more specifically in regard to identification/authentification vs updating) more uniform across request types.
-
-0.0.1.alpha.6
--------------
-
-Added doc for the latest feature of 0.0.1.alpha.5
-
-0.0.1-alpha.7
--------------
-
-Added csrf support
-
-0.0.1-alpha.8
--------------
-
-- Added Login/Logout to default Csrf protection.
-- Moved express-user/express-user-local example to this project
-- Added a bit of documentation
-- Removed express as a direct dependency
+0.0.1-alpha.10
+--------------
+- Updated user-properties dependency to version 3.1.0.
+- Updated dev dependency of express-user to version 0.0.1-alpha.14
+- Updated default schema to take into account the new features of user-properties
+- Removed the EmailTokenGen constructor property, which is made redundant by new capacities in the schema
+- Added facilities to re-generate the Password and EmailToken.
+- Moved the SendMail option to Responder.
+- Added the express-user-local-basic project to dev dependencies.
+- Adapted example to changes.
 
 0.0.1-alpha.9
 -------------
@@ -172,28 +153,76 @@ Added csrf support
 - Added 2 new options to constructor to accomodate email validation customization.
 - Added new option to constructor to hide hidden fields from GET requests (HideSecrets) and added handler to specify to express-user which fields should be hidden.
 
-0.0.1-alpha.10
---------------
-- Updated user-properties dependency to version 3.1.0.
-- Updated dev dependency of express-user to version 0.0.1-alpha.14
-- Updated default schema to take into account the new features of user-properties
-- Removed the EmailTokenGen constructor property, which is made redundant by new capacities in the schema
-- Added facilities to re-generate the Password and EmailToken.
-- Moved the SendMail option to Responder.
-- Added the express-user-local-basic project to dev dependencies.
-- Adapted example to changes.
+0.0.1-alpha.8
+-------------
 
-0.0.1-alpha.11
---------------
+- Added Login/Logout to default Csrf protection.
+- Moved express-user/express-user-local example to this project
+- Added a bit of documentation
+- Removed express as a direct dependency
 
-- Fix bug that prevented /User/:Field/:ID/:SetField route from working
-- Implemented Password/Email Token recovery in the example.
+0.0.1-alpha.7
+-------------
 
-0.0.1-alpha.12
---------------
+Added csrf support
 
-- Updated dev dependendices for express-user and express-user-local-basic to versions 0.0.1-alpha.15 and 0.0.1-alpha.2 respectivelly
-- Updated library to be compatiable with route change in the 0.0.1-alpha.15 version of express-user
-- Replaced response logic by feedback to pass to Responder
-- Improved bad input handling for body structure of requests
-- Fixed bug that occurs when a email token generator that can fail fails.
+0.0.1.alpha.6
+-------------
+
+Added doc for the latest feature of 0.0.1.alpha.5
+
+0.0.1.alpha.5
+-------------
+
+- Added user-properties dependency
+- Added customization for users' fields
+- Made the expected format for body parameters (more specifically in regard to identification/authentification vs updating) more uniform across request types.
+
+0.0.1.alpha.4
+-------------
+
+- Increased documentation details
+- Added option to pass a route to handle brute force.
+
+0.0.1-alpha.3
+-------------
+
+- Added support for /Users/:Field/:ID/Count/.
+
+0.0.1-alpha.2
+-------------
+
+- Adjusted to the change of API in express-user version 0.0.1-alpha.5
+- Added express-access-control as a dependency
+- Cleaned up the dev dependencies (not needed until there are tests)
+
+0.0.1-alpha.1
+-------------
+
+Changed session management URL from /Session/User to /Session/Self/User
+
+0.0.0 
+-----
+
+Initial prototype
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
