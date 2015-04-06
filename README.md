@@ -105,6 +105,13 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
+0.0.1-alpha.14
+--------------
+
+- Updated dev dependency for express-user to version 1.0.1
+- Added handler to DELETE /Session/Self/User to defined res.locals.ExpressUser
+
+
 0.0.1-alpha.13
 --------------
 
