@@ -105,6 +105,13 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
+1.0.0
+-----
+
+- Update user-store dev dependency to version 2.0.0 and adapted the example accordingly
+- Added tests
+- Revised and finished documentation
+
 0.0.1-alpha.14
 --------------
 

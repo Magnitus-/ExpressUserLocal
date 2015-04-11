@@ -18,6 +18,7 @@ var ExpressUserResponder = require('express-user-local-basic');
 
 var ExpressBruteAPI = require('express-brute');
 var BruteStoreAPI = require('express-brute-mongo');
+var UserProperties = require('user-properties');
 
 var App = Express();
 
@@ -32,6 +33,36 @@ App.set("view engine", "ejs");
 App.set("views", Path.resolve(__dirname, "Views"));
 
 var CsrfRoute = Csrf({ cookie: false });
+
+var UserSchema = UserProperties({
+    'Username': {
+        'Required': true,
+        'Unique': true,
+        'Mutable': false,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Username'].test(Value)}
+    },
+    'Email': {
+        'Required': true,
+        'Unique': true,
+        'Privacy': UserProperties.Privacy.Private,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Email'].test(Value)}
+    },
+    'Password': {
+        'Required': true,
+        'Privacy': UserProperties.Privacy.Secret,
+        'Retrievable': false,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Password'].test(Value)},
+        'Sources': ['User', 'Auto'],
+        'Generator': function(Callback) {Callback(null, Uid(15));}
+    },
+    'EmailToken': {
+        'Required': true,
+        'Privacy': UserProperties.Privacy.Secret,
+        'Retrievable': false,
+        'Access': 'Email',
+        'Sources': ['Auto'],
+        'Generator': function(Callback) {Callback(null, Uid(20));}
+    }});
 
 MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {native_parser:true}, function(Err, DB) {
     DB.createCollection('PasswordAccess', {'w': 1}, function(Err, BruteCollection) {
