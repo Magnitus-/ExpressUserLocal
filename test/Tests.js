@@ -12,6 +12,11 @@ var MongoDB = require('mongodb');
 var Session = require('express-session');
 var SessionStore= require('express-session-mongodb');
 var BodyParser = require('body-parser');
+var Uid = require('uid-safe').sync;
+
+var EmailRegex = require('regex-email');
+var UsernameRegex = new RegExp("^[a-zA-Z][\\w\\+\\-\\.]{0,19}$");
+var PasswordRegex = new RegExp("^.{8,20}$");
 
 var Context = {};
 
@@ -30,9 +35,7 @@ function Middleware(Routes)
 
 function Setup(ValidationHandler, ResponseRoutes, Callback)
 {
-    var UserSchema = UserProperties({'Email': {'Required': true, 'Unique': true, 'Privacy': UserProperties.Privacy.Private},
-                      'Username': {'Required': true, 'Unique': true, 'Privacy': UserProperties.Privacy.Public},
-                      'Password': {'Required': true, 'Privacy': UserProperties.Privacy.Secret, 'Retrievable': false}});
+    var UserSchema = GetUserSchema();
     MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {native_parser:true}, function(Err, DB) {
         UserStore(DB, UserSchema, function(Err, UserStoreInst) {
             SessionStore(DB, function(Err, SessionStoreInst) {
@@ -95,7 +98,12 @@ function Setup(ValidationHandler, ResponseRoutes, Callback)
                 App.use('/', function(Err, Req, Res, Next) {
                     if(Err.Type)
                     {
-                        Res.status(400).json({'ErrType': Err.Type, 'ErrSource': Err.Source});
+                        var ErrBody = {'ErrType': Err.Type, 'ErrSource': Err.Source};
+                        if(Err.Fields)
+                        {
+                            ErrBody['ErrFields'] = Err.Fields;
+                        }
+                        Res.status(400).json(ErrBody);
                     }
                     else
                     {
@@ -247,20 +255,232 @@ var FakeEmail = function(Req, Res, Next)
     
 }
 
+function GetUserSchema()
+{
+    var UserSchema = UserProperties({'Username': {
+                      'Required': true,
+                      'Unique': true,
+                      'Mutable': false,
+                      'Description': function(Value) {return UsernameRegex.test(Value)}
+                  },
+                  'Email': {
+                      'Required': true,
+                      'Unique': true,
+                      'Privacy': UserProperties.Privacy.Private,
+                      'Description': function(Value) {return EmailRegex.test(Value)}
+                  },
+                  'Password': {
+                      'Required': true,
+                      'Privacy': UserProperties.Privacy.Secret,
+                      'Retrievable': false,
+                      'Description': function(Value) {return PasswordRegex.test(Value)},
+                      'Sources': ['User', 'Auto'],
+                      'Generator': function(Callback) {Callback(null, Uid(15));}
+                  },
+                  'Gender': {
+                      'Privacy': UserProperties.Privacy.Private,
+                      'Mutable': false,
+                      'Description': function(Value) {return Value=='M'||Value=='F'} //Reality is more complex, but for the sake of this example...
+                  },
+                  'Age': {
+                      'Privacy': UserProperties.Privacy.Private,
+                      'Description': function(Value) {return typeof(Value)==typeof(1) && Value > 0}
+                  },
+                  'Address': {
+                      'Required': true,
+                      'Privacy': UserProperties.Privacy.Private
+                  },
+                  'EmailToken': {
+                      'Required': true,
+                      'Privacy': UserProperties.Privacy.Secret,
+                      'Access': 'Email',
+                      'Sources': ['Auto'],
+                      'Generator': function(Callback) {Callback(null, Uid(20));}
+                  }});
+    return UserSchema;
+}
+
+function In()
+{
+    var InList = arguments[0];
+    var CheckList = Array.prototype.slice.call(arguments, 1);
+    return(CheckList.every(function(CheckItem) {
+        return(InList.some(function(RefItem) {
+            return RefItem===CheckItem;
+        }));
+    }));
+}
 
 //Test Custom Verification
 //Test Hide vs non-hide
-//Use more detailed schema in user-properties test
 
-exports.Main = {
+
+exports.BasicSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema()};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'POST /Users': function(Test) {
+        Test.expect(7);
+        var Requester = new RequestHandler();
+        Requester.Request('POST', '/Users', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that POST /Users require a User property in the body.");
+            Requester.Request('POST', '/Users', function(Status, Body) {
+                Test.ok(Body.ErrType && Body.ErrFields && Body.ErrType === "BadField" && Body.ErrFields.length === 1 && In(Body.ErrFields, 'Address'), "Confirming that POST /Users requires required fields to be defined.");
+                Requester.Request('POST', '/Users', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrFields && Body.ErrType === "BadField" && Body.ErrFields.length === 2 && In(Body.ErrFields, 'Address', 'Password'), "Confirming that POST /Users requires required fields to be not null.");
+                    Requester.Request('POST', '/Users', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrFields && Body.ErrType === "BadField" && Body.ErrFields.length === 3 && In(Body.ErrFields, 'Username', 'Email', 'Password'), "Confirming that POST /Users requires required fields to pass validation.");
+                        Requester.Request('POST', '/Users', function(Status, Body) {
+                            Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                                Test.ok(Status===200 && User.Username==='Magnitus' && User.Email === 'ma@ma.ma' && User.EmailToken, "Confirming that POST /Users with only required fields work and that email authentication is generated.")
+                                Requester.Request('POST', '/Users', function(Status, Body) {
+                                    Test.ok(Body.ErrType && Body.ErrFields && Body.ErrType === "BadField" && Body.ErrFields.length === 2 && In(Body.ErrFields, 'Gender', 'Age'), "Confirming that POST /Users requires non-required fields, if present, to pass validation.");
+                                    Requester.Request('POST', '/Users', function(Status, Body) {
+                                        Context.UserStore.Get({'Username': 'Magnitus2'}, function(Err, User) {
+                                            Test.ok(Status===200 && User.Gender === 'M' && User.Age === 999, "Confirming that non-required fields are inserted for POST /Users and that the request validates if all fields validate.");
+                                            Test.done();
+                                        });
+                                    }, {'User': {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}}, true);
+                                }, {'User': {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'It', 'Age': -10}}, true);
+                            });
+                        }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin'}}, true );
+                    }, {'User': {'Username': '12Magnitus', 'Email': 'ma', 'Password': '1', 'Address': 'Vinvin du finfin'}}, true);
+                }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': null, 'Address': null}}, true);
+            }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho'}}, true);
+        }, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho'}, true);
+    },
+    'PUT /Session/Self/User': function(Test) {
+        Test.expect(7);
+        var Requester = new RequestHandler();
+        Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that PUT /Session/Self/User require a User property in the body.");
+            Requester.Request('POST', '/Users', function(Status, Body) {
+                Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === 'NoID' && Body.ErrSource === 'ExpressUserLocal', "Confirming that PUT /Session/Self/User requires a suitable login ID.");
+                    Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrType === 'NoID' && Body.ErrSource === 'ExpressUserLocal', "Confirming that PUT /Session/Self/User doesn't accept null value for login.");
+                        Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+                            Test.ok(Body.ErrType && Body.ErrType === 'NoAuth' && Body.ErrSource === 'ExpressUserLocal', "Confirming that PUT /Session/Self/User requires authentication.");
+                            Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+                                Test.ok(Body.ErrType && Body.ErrType === 'NoAuth' && Body.ErrSource === 'ExpressUserLocal', "Confirming that PUT /Session/Self/User doesn't accept null for authentication.");
+                                Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+                                    Test.ok(Body.ErrType && Body.ErrType === 'NoUser' && Body.ErrSource === 'ExpressUser', "Confirming that PUT /Session/Self/User passes invalid authentication to express-user properly.");
+                                    Requester.Request('PUT', '/Session/Self/User', function(Status, Body) {
+                                        Test.ok(Status===200, "Confirming that PUT /Session/Self/User with the right parameters work.");
+                                        Test.done();
+                                    }, {'User': {'Email': 'ma@ma.ma', 'Password': 'hahahihihoho'}}, true);
+                                }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihuhu', 'Address': 'Vinvin du finfin'}}, true);
+                            }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': null, 'Address': 'Vinvin du finfin'}}, true);
+                        }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Address': 'Vinvin du finfin'}}, true);
+                    }, {'User': {'Username': 'Magnitus', 'Email': null, 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin'}}, true);
+                }, {'User': {'Username': 'Magnitus', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin'}}, true);
+            }, {'User': {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin'}}, true);
+        }, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin'}, true);
+    },
+    'DELETE /Session/Self/User': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'GET /User/Self': function(Test) {
+        Test.expect(0);
+        Test.done();
+    }
+};
+
+exports.NoFieldHidingInViewSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'HideSecret': false};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'GET /User/Self': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'GET /User/:Field/:ID': function(Test) {
+        Test.expect(0);
+        Test.done();
+    }
+}
+
+exports.NoAdminSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'Roles': null};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'PATCH /User/:Field/:ID': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'DELETE /User/:Field/:ID': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'GET /User/:Field/:ID': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'PUT /User/:Field/:ID/Memberships/:Membership': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'DELETE /User/:Field/:ID/Memberships/:Membership': function(Test) {
+        Test.expect(0);
+        Test.done();
+    }
+}
+
+exports.BruteRouteSetup = {
+}
+
+exports.CrsfRouteSetup = {
+}
+
+exports.NonMinimalCrsfRouteSetup = {
+}
+
+exports.NoEmailVerificationSetup = {
+}
+
+exports.ConnectionSecurity = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'BruteForceRoute': FakeBrute, 'CsrfRoute': FakeCrsf, 'ConnectionSecurity': function() {return false;}};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'Main': function(Test) {
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        Requester.Request('POST', '/Users', function(Status, Body) {
+            Test.ok(Body.ErrType === "InsecureConnection" && Body.ErrSource === "ExpressUserLocal", "Making Sure that connection security route works");
+            Test.done();
+        }, {}, true);
+    }
+};
+
+
+/*exports.Default = {
     'setUp': function(Callback) {
         Setup([BodyRoute], [SuccessRoute], Callback);
     },
     'tearDown': function(Callback) {
         TearDown(Callback);
-    }
+    },
+    'Registration': function(Callback) {
+    },
     'SessionExistenceCheck': function(Test) {
-        /*Test.expect(6);
+        Test.expect(6);
         var Requester = new RequestHandler();
         Requester.Request('GET', '/User/Self', function(Status, Body) {
             Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with GET /User/Self works.');
@@ -280,7 +500,5 @@ exports.Main = {
                     }, null, true);
                 }, null, true);
             }, null, true);
-        }, null, true);*/
-    }}
-    
-
+        }, null, true);
+    }}*/

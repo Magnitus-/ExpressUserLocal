@@ -105,12 +105,18 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
-1.0.0
------
+0.0.1-alpha.15
+--------------
 
-- Update user-store dev dependency to version 2.0.0 and adapted the example accordingly
-- Added tests
-- Revised and finished documentation
+- Added POST /Users (ie, registration) to the list of routes on which brute force checks are applied
+- Added checks against undefined and null for required fields in POST /Users rather than just delegate it to schema validation or user-store constraint
+- Fixed minor bug where only first bad field would be reported for POST /Users
+- Changed the expected format of the UserSchema option to an user-properties instance
+- Changed the version of user-properties and express-access-control dependencies to a range of supported versions
+- Changed PUT /Session/Self/User route to only accept fields that are user or email accessible for login
+- Changed PUT /Session/Self/User route to check against null for login or auth, rather than defer that check to schema validator.
+- Started tests
+- Updated user-store dev dependency to version 2.0.3 and adapted the example accordingly
 
 0.0.1-alpha.14
 --------------

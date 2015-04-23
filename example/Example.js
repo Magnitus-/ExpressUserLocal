@@ -7,6 +7,7 @@ var Path = require('path');
 var Express = require('express');
 var BodyParser = require('body-parser');
 var Csrf = require('csurf');
+var Uid = require('uid-safe').sync;
 
 var MongoDB = require('mongodb');
 var Session = require('express-session');
@@ -88,8 +89,8 @@ MongoDB.MongoClient.connect("mongodb://localhost:27017/"+RandomIdentifier, {nati
             Callback(null);
         }
         var ExpressUserResponderOptions = {'SendEmail': MockSendEmail};
-        var ExpressUserLocalOptions = {'BruteForceRoute': ExpressBrute.prevent, 'CsrfRoute': CsrfRoute};
-        UserStoreAPI(DB, {'Email': {'Unique': 1, 'NotNull': 1}, 'Username': {'Unique': 1, 'NotNull': 1}, 'Password': {'NotNull': 1}}, function(Err, UserStore) {
+        var ExpressUserLocalOptions = {'BruteForceRoute': ExpressBrute.prevent, 'CsrfRoute': CsrfRoute, 'UserSchema': UserSchema};
+        UserStoreAPI(DB, UserSchema, function(Err, UserStore) {
             SessionStoreAPI(DB, function(Err, SessionStore) {
                 
                 App.use(Session({
