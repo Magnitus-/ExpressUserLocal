@@ -105,6 +105,13 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
+0.0.1-alpha.16
+--------------
+
+- More tests
+- Changed the name of 'HideSecret' option to 'HideRestricted'.
+- Changed GET /User/Self and GET /User/:Field/:ID routes to also hide fields whose access is not specified as 'User' if the HideRestricted option is set to true.
+
 0.0.1-alpha.15
 --------------
 

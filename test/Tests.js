@@ -220,6 +220,9 @@ var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Nex
         }
         else
         {
+            Res.locals.ExpressUser.Hide.forEach(function(ToHide) {
+                delete Res.locals.ExpressUser.Result[ToHide];
+            });
             Res.status(200).json(Res.locals.ExpressUser.Result);
         }
     }
@@ -296,6 +299,11 @@ function GetUserSchema()
                       'Access': 'Email',
                       'Sources': ['Auto'],
                       'Generator': function(Callback) {Callback(null, Uid(20));}
+                  },
+                  '_id': {
+                      'Privacy': UserProperties.Privacy.Private,
+                      'Access': 'System',
+                      'Sources': ['MongoDB']
                   }});
     return UserSchema;
 }
@@ -310,10 +318,6 @@ function In()
         }));
     }));
 }
-
-//Test Custom Verification
-//Test Hide vs non-hide
-
 
 exports.BasicSetup = {
     'setUp': function(Callback) {
@@ -382,10 +386,27 @@ exports.BasicSetup = {
         }, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin'}, true);
     },
     'DELETE /Session/Self/User': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        Requester.Request('DELETE', '/Session/Self/User', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "NoSessionUser" && Body.ErrSource === "ExpressUser", "Confirming that DELETE /Session/Self/User request is passed to express-user.");
+            Test.done();
+        }, {}, true);
     },
     'GET /User/Self': function(Test) {
+        Test.expect(2);
+        var Requester = new RequestHandler();
+        Requester.Request('GET', '/User/Self', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that GET /User/Self requires the user to be looged in.");
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('GET', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.Username==='Magnitus' && Body.Address === 'Vinvin du finfin' && Body.Email === 'ma@ma.ma' && Body.Gender === 'M' && Body.Age === 999 && (!Body.Password) && (!Body.EmailToken) && (!Body._id), "Confirming that GET /User/Self retrieves user from session and specifies the right fields to hide.");
+                    Test.done();
+                }, {}, true);
+            }, false);
+        }, {}, true);
+    },
+    'GET /User/:Field/:ID': function(Test) {
         Test.expect(0);
         Test.done();
     }
