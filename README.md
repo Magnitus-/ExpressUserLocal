@@ -105,6 +105,15 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
+0.0.1-alpha.17
+--------------
+
+- More tests
+- Changed container of invalid update fields for PATCH methods from Err.Fields to Err.UpdateFields to more easily differentiate them from invalid authentication fields.
+- Added checks against null for required fields in PATCH routes rather than just delegate it to schema validation or user-store constraint
+- Fixed minor bug where only first bad field for updates would be reported for PATCH routes
+- Removed the restricted fields hidding for the GET /User/:Field/:ID route
+
 0.0.1-alpha.16
 --------------
 

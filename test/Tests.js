@@ -103,12 +103,20 @@ function Setup(ValidationHandler, ResponseRoutes, Callback)
                         {
                             ErrBody['ErrFields'] = Err.Fields;
                         }
+                        if(Err.UpdateFields)
+                        {
+                            ErrBody['ErrUpdateFields'] = Err.UpdateFields;
+                        }
                         Res.status(400).json(ErrBody);
                     }
                     else
                     {
                         Next(Err);
                     }
+                });
+                
+                App.use('/', function(Req, Res, Next) {
+                    Res.status(404).end();
                 });
                 
                 Context['Server'] = Http.createServer(Context['App']);
@@ -220,9 +228,12 @@ var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Nex
         }
         else
         {
-            Res.locals.ExpressUser.Hide.forEach(function(ToHide) {
-                delete Res.locals.ExpressUser.Result[ToHide];
-            });
+            if(Res.locals.ExpressUser.Hide)
+            {
+                Res.locals.ExpressUser.Hide.forEach(function(ToHide) {
+                    delete Res.locals.ExpressUser.Result[ToHide];
+                });
+            }
             Res.status(200).json(Res.locals.ExpressUser.Result);
         }
     }
@@ -397,7 +408,7 @@ exports.BasicSetup = {
         Test.expect(2);
         var Requester = new RequestHandler();
         Requester.Request('GET', '/User/Self', function(Status, Body) {
-            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that GET /User/Self requires the user to be looged in.");
+            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that GET /User/Self requires the user to be logged in.");
             CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
                 Requester.Request('GET', '/User/Self', function(Status, Body) {
                     Test.ok(Body.Username==='Magnitus' && Body.Address === 'Vinvin du finfin' && Body.Email === 'ma@ma.ma' && Body.Gender === 'M' && Body.Age === 999 && (!Body.Password) && (!Body.EmailToken) && (!Body._id), "Confirming that GET /User/Self retrieves user from session and specifies the right fields to hide.");
@@ -407,6 +418,227 @@ exports.BasicSetup = {
         }, {}, true);
     },
     'GET /User/:Field/:ID': function(Test) {
+        Test.expect(7);
+        var Requester = new RequestHandler();
+        Requester.Request('GET', '/User/Username/AhAh', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that GET /User/:Field/:ID requires the user to be logged in.");   
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('GET', '/User/Username/Magnitus', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that GET /User/:Field/:ID requires the user to have the right privileges.");  
+                    CreateAndLogin(Requester, {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                        Requester.Request('GET', '/User/Username/Magnitus', function(Status, Body) {
+                            Test.ok(Status===200 && Body.Username === 'Magnitus' && Body.Email === 'ma@ma.ma' && Body.Gender === 'M' && Body.Age === 999 && Body.Password && Body.EmailToken && Body._id, "Confirming that GET /User/:Field/:ID accessed with the right privileges retrieves the user and doesn't hide any fields.");
+                            Requester.Request('GET', '/User/Username/Magnitus3', function(Status, Body) {
+                                Test.ok(Body.ErrType && Body.ErrType === 'NoUser' && Body.ErrSource === 'ExpressUser', "Confirming that GET /User/:Field/:ID with the right privileges on a non-existent user gets passed to express-user.");
+                                Requester.Request('GET', '/User/Username/123', function(Status, Body) {
+                                    Test.ok(Body.ErrType && Body.ErrFields && Body.ErrType === 'BadField' && Body.ErrFields.length === 1 && Body.ErrFields[0] === 'Username', "Confirming that GET /User/:Field/:ID performs validation on Field.");
+                                    Requester.Request('GET', '/User/lalala/123', function(Status, Body) {
+                                        Test.ok(Body.ErrType && Body.ErrType === "NoID" && Body.ErrSource === "ExpressUserLocal", "Confirming that GET /User/:Field/:ID requires Field to exist."); 
+                                        Requester.Request('GET', '/User/Password/hihihoho', function(Status, Body) {
+                                            Test.ok(Body.ErrType && Body.ErrType === "NoID" && Body.ErrSource === "ExpressUserLocal", "Confirming that GET /User/:Field/:ID requires Field to be a valid identifier.");
+                                            Test.done();
+                                        }, {}, true);
+                                    }, {}, true);
+                                }, {}, true);
+                            }, {}, true);
+                        }, {}, true);
+                    }, true);
+                }, {}, true);
+            });
+        }, {}, true);
+    },
+    'PATCH /User/Self': function(Test) {
+        Test.expect(10);
+        var Requester = new RequestHandler();
+        var Calls = [
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PATCH /User/Self requires the user to be logged in."); 
+                    Callback()
+                }, {'Update': {'Username': 'abcde', 'Password': 'abcde'}}, true);
+            },
+            function(Callback) {
+                CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                    Callback();
+                });
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that PATCH /User/Self require an Update property in the body.");
+                    Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that PATCH /User/Self require an User property in the body.");
+                        Callback();
+                    }, {'Update': {'Username': 'Magnitus'}}, true);
+                }, {'User': {'Password': 'abcdefgg'}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "NoAuth" && Body.ErrSource === "ExpressUserLocal", "Confirming that PATCH /User/Self require an authentication field.");
+                    Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrType === "NoField" && Body.ErrSource === "ExpressUserLocal", "Confirming that PATCH /User/Self require at least one field to update.");
+                        Callback();
+                    }, {'User': {'Password': 'HahaHiHiHoHo'}, 'Update': {}}, true);
+                }, {'User': {'Username': 'Magnitus'}, 'Update': {'Email': 'Magnitus2'}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrFields && Body.ErrType === 'BadField' && Body.ErrFields.length === 1 && Body.ErrFields[0] === 'Password', "Confirming that PATCH /User/Self performs validation on User fields.");
+                    Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrUpdateFields && Body.ErrType === 'BadField' && Body.ErrUpdateFields.length === 1 && Body.ErrUpdateFields[0] === 'Email', "Confirming that PATCH /User/Self performs validation on Update fields.");
+                        Callback();
+                    }, {'User': {'Password': 'adfdfdsfgsdg'}, 'Update': {'Email': '123'}}, true);
+                }, {'User': {'Password': '123'}, 'Update': {'Email': 'Magnitus2'}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                    Context.UserStore.Get({'Email': 'ma2@ma.ma', 'Password': 'ILoveMyQwerty!'}, function(Err, User) {
+                        Test.ok(Status===200 && User && User.Username === 'Magnitus' && User.Gender === 'M' && User.Age === 1 && User._id !== 999 && User.Memberships !== 'holahola', "Confirming that PATCH /User/Self only updates fields that qualify as editable are edited.");
+                        Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                            Test.ok(Body.ErrType && Body.ErrType === "NoField" && Body.ErrSource === "ExpressUserLocal", "Confirming that specifying only non-editable fields for PATCH /User/Self is the same as specifying no fields.");
+                            Callback();
+                        }, {'User': {'Password': 'ILoveMyQwerty!'}, 'Update': {'Username': 'Magnitus2', 'Gender': 'F', '_id': 999, 'Memberships': 'holahola'}}, true);
+                    });
+                }, {'User': {'Password': 'hahahihihoho'}, 'Update': {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'ILoveMyQwerty!', 'Gender': 'F', 'Age': 1, 'Address': 'Not your business!', '_id': 999, 'Memberships': 'holahola'}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrUpdateFields && Body.ErrType === 'BadField' && Body.ErrUpdateFields.length === 3 && In(Body.ErrUpdateFields, 'Email', 'Password', 'Address'), "Confirming that PATCH /User/Self performs non-null check on required fields.");
+                    Callback();
+                }, {'User': {'Password': 'ILoveMyQwerty!'}, 'Update': {'Email': null, 'Password': null, 'Address': null}}, true);
+            }
+        ];
+        Nimble.series(Calls, function(Err) {
+            if(Err)
+            {
+                console.log(Err);
+            }
+            Test.done();
+        });
+    },
+    'PATCH /User/:Field/:ID': function(Test) {
+        Test.expect(10);
+        var Requester = new RequestHandler();
+        var Calls = [
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PATCH /User/:Field/:ID requires the user to be logged in.");
+                    CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                        Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PATCH /User/:Field/:ID requires the right privileges to access.");
+                            Callback();
+                        }, {'Update': {'Username': 'abcde', 'Password': 'abcde'}}, true);
+                    });
+                }, {'Update': {'Username': 'abcde', 'Password': 'abcde'}}, true);
+            },
+            function(Callback) {
+                CreateAndLogin(Requester, {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                    Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that PATCH /User/:Field/:ID require an Update property in the body.");
+                        Callback();
+                    }, {}, true);
+                }, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "NoField" && Body.ErrSource === "ExpressUserLocal", "Confirming that PATCH /User/:Field/:ID reports when nothing is being updated.");
+                    Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                        Test.ok(Body.ErrType === 'BadField' && Body.ErrUpdateFields && In(Body.ErrUpdateFields, 'Username', 'Password', 'Email', 'Gender', 'Age'), "Confirming that PATCH /User/:Field/:ID applies validation properly.");
+                        Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                            Test.ok(Body.ErrType === 'BadField' && Body.ErrUpdateFields && In(Body.ErrUpdateFields, 'Username', 'Email', 'Password', 'Address', 'EmailToken'), "Confirming that PATCH /User/:Field/:ID ensures required fields are not null.");
+                            Callback();
+                        }, {'Update': {'Username': null, 'Email': null, 'Password': null, 'Address': null, 'EmailToken': null}}, true);
+                    }, {'Update': {'Username': '123', 'Password': '', 'Email': '123', 'Gender': '???', 'Age': -1}}, true);
+                }, {'Update': {}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                    Context.UserStore.Get({'Email': 'ma3@ma.ma', 'Password': '123456789'}, function(Err, User) {
+                        Test.ok(Status === 200 && User && User.Username === 'Magnitus3' && User.Gender === 'F' && User.Age === 1 && User.Address === '123' && User.EmailToken === 'abcd', "Confirming that updates on PATCH /User/:Field/:ID by user with sufficient privileges work.");
+                        Callback();
+                    });
+                }, {'Update': {'Username': 'Magnitus3', 'Password': '123456789', 'Email': 'ma3@ma.ma', 'Gender': 'F', 'Age': 1, 'Address': '123', 'EmailToken': 'abcd'}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Username/123', function(Status, Body) {
+                    Test.ok(Body.ErrType === 'BadField' && Body.ErrFields && In(Body.ErrFields, 'Username'), "Confirming that PATCH /User/:Field/:ID validates ID.");
+                    Requester.Request('PATCH', '/User/Gender/M', function(Status, Body) {
+                        Test.ok(Body.ErrType === 'NoID', "Confirming that PATCH /User/:Field/:ID checks that Field is an identifier.");
+                        Callback();
+                    }, {'Update': {'Username': 'Magnitus3'}}, true);
+                }, {'Update': {'Username': 'Magnitus3'}}, true);
+            },
+            function(Callback) {
+                Requester.Request('PATCH', '/User/Username/Gogogogogogogo', function(Status, Body) {
+                    Test.ok(Body.ErrType === 'NoUpdate' && Body.ErrSource === 'ExpressUser', "Confirming that PATCH /User/:Field/:ID doesn't interfere with express-user error handling.");
+                    Callback();
+                }, {'Update': {'Username': 'Magnitussss'}}, true);
+            }
+        ];
+        Nimble.series(Calls, function(Err) {
+            if(Err)
+            {
+                console.log(Err);
+            }
+            Test.done();
+        });
+    },
+    'DELETE /User/Self': function(Test) {
+        Test.expect(6);
+        var Requester = new RequestHandler();
+        Requester.Request('DELETE', '/User/Self', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/Self require a User to be logged in.");
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('DELETE', '/User/Self', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that DELETE /User/Self require a User property in the body.");
+                    Requester.Request('DELETE', '/User/Self', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrType === "NoAuth" && Body.ErrSource === "ExpressUserLocal", "Confirming that DELETE /User/Self requires authentication.");
+                        Requester.Request('DELETE', '/User/Self', function(Status, Body) {
+                            Test.ok(Body.ErrType === "BadField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Password'), "Confirming that DELETE /User/Self performs validation on authentication.");
+                            Requester.Request('DELETE', '/User/Self', function(Status, Body) {
+                                Test.ok(Body.ErrType === "NoDelete" && Body.ErrSource === "ExpressUser", "Confirming that DELETE /User/Self doesn't interfere with express-user error handling.");
+                                Requester.Request('DELETE', '/User/Self', function(Status, Body) {
+                                    Context.UserStore.Get({'Email': 'ma@ma.ma'}, function(Err, User) {
+                                        Test.ok(!User, "Confirming that DELETE /User/Self with proper authentication deletes a user");
+                                        Test.done();
+                                    });
+                                }, {'User': {'Password': 'hahahihihoho'}}, true);
+                            }, {'User': {'Password': 'hahaaaaaaaaa'}}, true);
+                        }, {'User': {'Password': '123'}}, true);
+                    }, {'User': {'Username': 'Hahahahaha!'}}, true);
+                }, {}, true);
+            });
+        }, {'User': {}}, true);
+    },
+    'DELETE /User/:Field/:ID': function(Test) {
+        Test.expect(0);
+        var Requester = new RequestHandler();
+        Test.done();
+    },
+    'GET /Users/:Field/:ID/Count': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'PUT /User/Self/Memberships/:Membership': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'PUT /User/:Field/:ID/Memberships/:Membership': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'DELETE /User/Self/Memberships/:Membership': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'DELETE /User/:Field/:ID/Memberships/:Membership': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'POST /User/Self/Recovery/:SetField': function(Test) {
+        Test.expect(0);
+        Test.done();
+    },
+    'POST /User/:Field/:ID/Recovery/:SetField': function(Test) {
         Test.expect(0);
         Test.done();
     }
@@ -489,37 +721,3 @@ exports.ConnectionSecurity = {
         }, {}, true);
     }
 };
-
-
-/*exports.Default = {
-    'setUp': function(Callback) {
-        Setup([BodyRoute], [SuccessRoute], Callback);
-    },
-    'tearDown': function(Callback) {
-        TearDown(Callback);
-    },
-    'Registration': function(Callback) {
-    },
-    'SessionExistenceCheck': function(Test) {
-        Test.expect(6);
-        var Requester = new RequestHandler();
-        Requester.Request('GET', '/User/Self', function(Status, Body) {
-            Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with GET /User/Self works.');
-            Requester.Request('DELETE', '/User/Self', function(Status, Body) {
-                Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with DELETE /User/Self works.');
-                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
-                    Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with PATCH /User/Self works.');
-                    Requester.Request('PUT', '/User/Self/Memberships/Clown', function(Status, Body) {
-                        Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with PUT /User/Self/Memberships/:Membership works.');
-                        Requester.Request('DELETE', '/User/Self/Memberships/Clown', function(Status, Body) {
-                            Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with DELETE /User/Self/Memberships/:Membership works.');
-                            Requester.Request('POST', '/User/Self/Recovery/MyCat', function(Status, Body) {
-                                Test.ok(Status===400 && Body.ErrType && Body.ErrType==='NoAccess', 'Confirming that session existence check with POST /User/Self/Recovery/:SetField works.');
-                                Test.done();
-                            }, null, true);
-                        }, null, true);
-                    }, null, true);
-                }, null, true);
-            }, null, true);
-        }, null, true);
-    }}*/
