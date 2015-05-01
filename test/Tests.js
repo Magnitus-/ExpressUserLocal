@@ -586,7 +586,7 @@ exports.BasicSetup = {
         Test.expect(6);
         var Requester = new RequestHandler();
         Requester.Request('DELETE', '/User/Self', function(Status, Body) {
-            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/Self require a User to be logged in.");
+            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/Self requires a User to be logged in.");
             CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
                 Requester.Request('DELETE', '/User/Self', function(Status, Body) {
                     Test.ok(Body.ErrType && Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that DELETE /User/Self require a User property in the body.");
@@ -610,12 +610,34 @@ exports.BasicSetup = {
         }, {'User': {}}, true);
     },
     'DELETE /User/:Field/:ID': function(Test) {
-        Test.expect(0);
+        Test.expect(5);
         var Requester = new RequestHandler();
-        Test.done();
+        Requester.Request('DELETE', '/User/Username/Magnitus', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/:Field/:ID requires a User to be logged in.");
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('DELETE', '/User/Username/Magnitus', function(Status, Body) {
+                    Test.ok(Body.ErrType && Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/:Field/:ID requires special access privileges.");
+                    CreateAndLogin(Requester, {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                        Requester.Request('DELETE', '/User/Username/123', function(Status, Body) {
+                            Test.ok(Body.ErrType === "BadField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Username'), "Confirming that DELETE /User/:Field/:ID performs validation on ID.");
+                            Requester.Request('DELETE', '/User/Gender/M', function(Status, Body) {
+                                Test.ok(Body.ErrType === "NoID" && Body.ErrSource === "ExpressUserLocal", "Confirming that DELETE /User/:Field/:ID requires Field to be a valid ID.");
+                                Requester.Request('DELETE', '/User/Username/Magnitus', function(Status, Body) {
+                                    Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                                        Test.ok((!User) && Status === 200, "Confirming that DELETE /User/:Field/:ID with the proper parameters and right privileges works.");
+                                        Test.done();
+                                    });
+                                }, {}, true);
+                            }, {}, true)
+                        }, {}, true);
+                    }, true);
+                }, {}, true);
+            });
+        }, {}, true);
     },
     'GET /Users/:Field/:ID/Count': function(Test) {
         Test.expect(0);
+        var Requester = new RequestHandler();
         Test.done();
     },
     'PUT /User/Self/Memberships/:Membership': function(Test) {
