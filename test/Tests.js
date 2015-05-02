@@ -636,9 +636,34 @@ exports.BasicSetup = {
         }, {}, true);
     },
     'GET /Users/:Field/:ID/Count': function(Test) {
-        Test.expect(0);
+        Test.expect(7);
         var Requester = new RequestHandler();
-        Test.done();
+        Requester.Request('GET', '/Users/LOLZ/123/Count', function(Status, Body) {
+            Test.ok(Body.ErrType && Body.ErrType === "NoField" && Body.ErrSource === "ExpressUserLocal", "Confirming that GET /User/:Field/:ID/Count requires a field that is defined in the schema.");
+            Requester.Request('GET', '/Users/Username/123/Count', function(Status, Body) {
+                Test.ok(Body.ErrType && Body.ErrType === "BadField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Username'), "Confirming that GET /User/:Field/:ID/Count validates ID.");
+                CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                    Requester.Request('GET', '/Users/Email/ma@ma.ma/Count', function(Status, Body) {
+                        Test.ok(Body.ErrType && Body.ErrType === "PrivateField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Email'), "Confirming that GET /User/:Field/:ID/Count protects private fields from illegitimate access.");
+                        Requester.Request('GET', '/Users/Password/123456789/Count', function(Status, Body) {
+                            Test.ok(Body.ErrType && Body.ErrType === "PrivateField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Password'), "Confirming that GET /User/:Field/:ID/Count protects secret fields from illegitimate access.");
+                            Requester.Request('GET', '/Users/Username/Magnitus/Count', function(Status, Body) {
+                                Test.ok(Status === 200 && Body.Count && Body.Count === 1, "Confirming that GET /User/:Field/:ID/Count works properly when accessing a public field.");
+                                CreateAndLogin(Requester, {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                                    Requester.Request('GET', '/Users/Email/ma@ma.ma/Count', function(Status, Body) {
+                                        Test.ok(Status === 200 && Body.Count && Body.Count === 1, "Confirming that GET /User/:Field/:ID/Count works properly for a user with sufficient access when accessing a private field.");
+                                        Requester.Request('GET', '/Users/Gender/M/Count', function(Status, Body) {
+                                            Test.ok(Status === 200 && Body.Count && Body.Count === 2, "Confirming that GET /User/:Field/:ID/Count works properly when accessing a non-ID field.");
+                                            Test.done();
+                                        }, {}, true);
+                                    }, {}, true);
+                                }, true);
+                            }, {}, true);
+                        }, {}, true);
+                    }, {}, true);
+                });
+            }, {}, 'true');
+        }, {}, 'true');
     },
     'PUT /User/Self/Memberships/:Membership': function(Test) {
         Test.expect(0);

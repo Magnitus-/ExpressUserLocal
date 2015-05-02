@@ -105,6 +105,13 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
+0.0.1-alpha.18
+--------------
+
+- More tests
+- Improved GET /User/:Field/:ID/Count feedback to distinguish access attempts to a inexistent field from forbibben access attempts to a private field.
+- Fixed minor bug in GET /User/:Field/:Value/Count, where only ID fields could be accepted.
+
 0.0.1-alpha.17
 --------------
 
