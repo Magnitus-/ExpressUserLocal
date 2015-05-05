@@ -269,6 +269,19 @@ var FakeEmail = function(Req, Res, Next)
     
 }
 
+//Crafted this way to test non-null requirement outside the validator, but still test for validation by trying strings with length less than 4
+function EmailTokenValidation(Value)
+{
+    if(Value !== null && Value !== undefined && Value.length !== undefined)
+    {
+        return Value.length > 3;
+    }
+    else
+    {
+        return true;
+    }
+}
+
 function GetUserSchema()
 {
     var UserSchema = UserProperties({'Username': {
@@ -309,7 +322,8 @@ function GetUserSchema()
                       'Privacy': UserProperties.Privacy.Secret,
                       'Access': 'Email',
                       'Sources': ['Auto'],
-                      'Generator': function(Callback) {Callback(null, Uid(20));}
+                      'Generator': function(Callback) {Callback(null, Uid(20));},
+                      'Description': EmailTokenValidation
                   },
                   '_id': {
                       'Privacy': UserProperties.Privacy.Private,
@@ -636,7 +650,7 @@ exports.BasicSetup = {
         }, {}, true);
     },
     'GET /Users/:Field/:ID/Count': function(Test) {
-        Test.expect(7);
+        Test.expect(8);
         var Requester = new RequestHandler();
         Requester.Request('GET', '/Users/LOLZ/123/Count', function(Status, Body) {
             Test.ok(Body.ErrType && Body.ErrType === "NoField" && Body.ErrSource === "ExpressUserLocal", "Confirming that GET /User/:Field/:ID/Count requires a field that is defined in the schema.");
@@ -654,7 +668,10 @@ exports.BasicSetup = {
                                         Test.ok(Status === 200 && Body.Count && Body.Count === 1, "Confirming that GET /User/:Field/:ID/Count works properly for a user with sufficient access when accessing a private field.");
                                         Requester.Request('GET', '/Users/Gender/M/Count', function(Status, Body) {
                                             Test.ok(Status === 200 && Body.Count && Body.Count === 2, "Confirming that GET /User/:Field/:ID/Count works properly when accessing a non-ID field.");
-                                            Test.done();
+                                            Requester.Request('GET', '/Users/Gender/F/Count', function(Status, Body) {
+                                                Test.ok(Status === 200 && Body.Count === 0, "Confirming that GET /User/:Field/:ID/Count works properly when the count is 0.");
+                                                Test.done();
+                                            }, {}, true);
                                         }, {}, true);
                                     }, {}, true);
                                 }, true);
@@ -662,12 +679,33 @@ exports.BasicSetup = {
                         }, {}, true);
                     }, {}, true);
                 });
-            }, {}, 'true');
-        }, {}, 'true');
+            }, {}, true);
+        }, {}, true);
     },
     'PUT /User/Self/Memberships/:Membership': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(6);
+        var Requester = new RequestHandler();
+        Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+            Test.ok(Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PUT /User/Self/Memberships/Validated requires a User to be logged in.");
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('PUT', '/User/Self/Memberships/Ah', function(Status, Body) {
+                    Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that only the PUT /User/Self/Memberships/Validated is active for PUT /User/Self/Memberships/:Membership.");
+                    Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                        Test.ok(Body.ErrType === "BadBody" && Body.ErrSource === "ExpressUserLocal", "Confirming that only the PUT /User/Self/Memberships/Validated requires a User property in the body.");
+                        Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                            Test.ok(Body.ErrType === "NoAuth" && Body.ErrSource === "ExpressUserLocal", "Confirming that PUT /User/Self/Memberships/Validated requires email authentication."); 
+                            Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                                Test.ok(Body.ErrType === "BadField" && Body.ErrFields && In(Body.ErrFields, 'EmailToken'), "Confirming that PUT /User/Self/Memberships/Validated executes field validation properly.");
+                                Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                                    Test.ok(Body.ErrType === "NoInsertion" && Body.ErrSource === "ExpressUser", "Confirming that PUT /User/Self/Memberships/Validated convey incorrect authentication field to express-user.");
+                                    Test.done();
+                                }, {'User': {'EmailToken': 'abcdef'}}, true);
+                            }, {'User': {'EmailToken': 'abc'}}, true);
+                        }, {'User': {'Password': 'hahahihihoho', 'Email': 'ma@ma.ma'}}, true);
+                    }, {}, true);
+                }, {}, true);
+            });
+        }, {}, true);
     },
     'PUT /User/:Field/:ID/Memberships/:Membership': function(Test) {
         Test.expect(0);
@@ -739,6 +777,12 @@ exports.NoAdminSetup = {
     }
 }
 
+exports.NoEmailVerificationSetup = {
+}
+
+exports.NumericalParamsSetup = {
+}
+
 exports.BruteRouteSetup = {
 }
 
@@ -748,8 +792,7 @@ exports.CrsfRouteSetup = {
 exports.NonMinimalCrsfRouteSetup = {
 }
 
-exports.NoEmailVerificationSetup = {
-}
+
 
 exports.ConnectionSecurity = {
     'setUp': function(Callback) {

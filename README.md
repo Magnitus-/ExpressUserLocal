@@ -105,6 +105,15 @@ In order to avoid an email server dependency just to run the example (days of fu
 History
 =======
 
+0.0.1-alpha.19
+--------------
+
+- More tests
+- Updated user-properties dependency to version 3.4.0
+- Changed handling of URL parameters to parse fields as dictated by the user schema.
+- Added validation for the email authentication field in the PUT /User/Self/Memberships/Validated route.
+- Indicated the nuances for different errors in the PUT /User/Self/Memberships/Validated and made the errors most consistent with the rest of the library.
+
 0.0.1-alpha.18
 --------------
 
