@@ -40,7 +40,7 @@
     "express-brute-mongo": "~0.1.0",
     "express-session": "~1.10.1",
     "express-session-mongodb": "~1.3.2",
-    "express-user": "~1.0.1",
+    "express-user": "~1.0.3",
     "express-user-local-basic": "0.0.1-alpha.3",
     "mongodb": "~1.4.35",
     "nimble": "0.0.2",

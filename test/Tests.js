@@ -124,7 +124,7 @@ function Setup(ValidationHandler, ResponseRoutes, Callback)
                     Callback();
                 });
             }, SessionStoreOptions);
-        });
+        }, {'Iterations': 5});
     });
 }
 
@@ -236,6 +236,10 @@ var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Nex
             }
             Res.status(200).json(Res.locals.ExpressUser.Result);
         }
+    }
+    else
+    {
+        Next();
     }
 }};
 
@@ -683,7 +687,7 @@ exports.BasicSetup = {
         }, {}, true);
     },
     'PUT /User/Self/Memberships/:Membership': function(Test) {
-        Test.expect(6);
+        Test.expect(7);
         var Requester = new RequestHandler();
         Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
             Test.ok(Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PUT /User/Self/Memberships/Validated requires a User to be logged in.");
@@ -698,7 +702,14 @@ exports.BasicSetup = {
                                 Test.ok(Body.ErrType === "BadField" && Body.ErrFields && In(Body.ErrFields, 'EmailToken'), "Confirming that PUT /User/Self/Memberships/Validated executes field validation properly.");
                                 Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
                                     Test.ok(Body.ErrType === "NoInsertion" && Body.ErrSource === "ExpressUser", "Confirming that PUT /User/Self/Memberships/Validated convey incorrect authentication field to express-user.");
-                                    Test.done();
+                                    Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                                        Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                                            Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                                                Test.ok(Status === 200 && In(User.Memberships, 'Validated'), "Confirm that legitimate email validation works");
+                                                Test.done();
+                                            });
+                                        }, {'User': {'EmailToken': User.EmailToken}}, true);
+                                    });
                                 }, {'User': {'EmailToken': 'abcdef'}}, true);
                             }, {'User': {'EmailToken': 'abc'}}, true);
                         }, {'User': {'Password': 'hahahihihoho', 'Email': 'ma@ma.ma'}}, true);
@@ -708,24 +719,110 @@ exports.BasicSetup = {
         }, {}, true);
     },
     'PUT /User/:Field/:ID/Memberships/:Membership': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(5);
+        var Requester = new RequestHandler();
+        Requester.Request('PUT', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+            Test.ok(Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PUT /User/:Field/:ID/Memberships/:Membership requires a User to be logged in.");
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('PUT', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                    Test.ok(Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that PUT /User/:Field/:ID/Memberships/:Membership requires special access privileges.");
+                    CreateAndLogin(Requester, {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                        Requester.Request('PUT', '/User/Username/123/Memberships/Test', function(Status, Body) {
+                            Test.ok(Body.ErrType === "BadField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Username') , "Confirming that PUT /User/:Field/:ID/Memberships/:Membership validates ID.");
+                            Requester.Request('PUT', '/User/Username/DoesNotExist/Memberships/Test', function(Status, Body) {
+                                Test.ok(Body.ErrType === "NoInsertion" && Body.ErrSource === "ExpressUser", "Confirming that PUT /User/:Field/:ID/Memberships/:Membership passes non-existent user to express-user.");
+                                Requester.Request('PUT', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                                    Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                                        Test.ok(Status=== 200 && In(User.Memberships, 'Test'), "Confirming that membership insertion with sufficient privileges works");
+                                        Test.done();
+                                    });
+                                }, {}, true);
+                            }, {}, true);
+                        }, {}, true);
+                    }, true);
+                }, {}, true);
+            });
+        }, {}, true);
     },
     'DELETE /User/Self/Memberships/:Membership': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Requester.Request('DELETE', '/User/Self/Memberships/DoesNotMatter', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that the DELETE /User/Self/Memberships/:Membership route is disabled.");
+                Test.done();
+            }, {}, true);
+        });
     },
     'DELETE /User/:Field/:ID/Memberships/:Membership': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(5);
+        var Requester = new RequestHandler();
+        Requester.Request('DELETE', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+            Test.ok(Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/:Field/:ID/Memberships/:Membership requires a User to be logged in.");
+            CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                Requester.Request('DELETE', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                    Test.ok(Body.ErrType === "NoAccess" && Body.ErrSource === "ExpressAccessControl", "Confirming that DELETE /User/:Field/:ID/Memberships/:Membership requires special access privileges.");
+                    CreateAndLogin(Requester, {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                        Requester.Request('DELETE', '/User/Username/123/Memberships/Test', function(Status, Body) {
+                            Test.ok(Body.ErrType === "BadField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Username') , "Confirming that DELETE /User/:Field/:ID/Memberships/:Membership validates ID.");
+                            Requester.Request('DELETE', '/User/Username/DoesNotExist/Memberships/Test', function(Status, Body) {
+                                Test.ok(Body.ErrType === "NoDeletion" && Body.ErrSource === "ExpressUser", "Confirming that DELETE /User/:Field/:ID/Memberships/:Membership passes non-existent user to express-user.");
+                                Requester.Request('PUT', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                                    Requester.Request('DELETE', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                                        Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                                            Test.ok(Status=== 200 && (!In(User.Memberships, 'Test')), "Confirming that membership deletion with sufficient privileges works");
+                                            Test.done();
+                                        });
+                                    }, {}, true);
+                                }, {}, true);
+                            }, {}, true);
+                        }, {}, true);
+                    }, true);
+                }, {}, true);
+            });
+        }, {}, true);
     },
     'POST /User/Self/Recovery/:SetField': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Requester.Request('POST', '/User/Self/Recovery/DoesNotMatter', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that the POST /User/Self/Recovery/:SetField route is disabled.");
+                Test.done();
+            }, {}, true);
+        });
     },
     'POST /User/:Field/:ID/Recovery/:SetField': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(7);
+        var Requester = new RequestHandler();
+        Requester.Request('POST', '/User/Username/Magnitus/Recovery/EmailToken', function(Status, Body) {
+            Test.ok(Body.ErrType === "NoID" && Body.ErrSource === "ExpressUserLocal", "Confirming that POST /User/:Field/:ID/Recovery/:SetField requires Field to be private.");
+            Requester.Request('POST', '/User/Password/hahahihihoho/Recovery/EmailToken', function(Status, Body) {
+                Test.ok(Body.ErrType === "NoID" && Body.ErrSource === "ExpressUserLocal", "Confirming that POST /User/:Field/:ID/Recovery/:SetField requires Field to be ID.");
+                Requester.Request('POST', '/User/Email/ma@ma.ma/Recovery/NoExist', function(Status, Body) {
+                    Test.ok(Body.ErrType === "NoAuto" && Body.ErrSource === "ExpressUserLocal", "Confirming that POST /User/:Field/:ID/Recovery/:SetField requires SetField to be an existing field.");
+                    Requester.Request('POST', '/User/Email/ma@ma.ma/Recovery/Age', function(Status, Body) {
+                        Test.ok(Body.ErrType === "NoAuto" && Body.ErrSource === "ExpressUserLocal", "Confirming that POST /User/:Field/:ID/Recovery/:SetField requires SetField to be auto generated.");
+                        Requester.Request('POST', '/User/Email/aaa/Recovery/EmailToken', function(Status, Body) {
+                           Test.ok(Body.ErrType === "BadField" && Body.ErrSource === "ExpressUserLocal" && Body.ErrFields && In(Body.ErrFields, 'Email'), "Confirming that POST /User/:Field/:ID/Recovery/:SetField validates ID.");
+                           Requester.Request('POST', '/User/Email/ma@ma.ma/Recovery/EmailToken', function(Status, Body) {
+                               Test.ok(Body.ErrType === "NoUpdate" && Body.ErrSource === "ExpressUser", "Confirming that POST /User/:Field/:ID/Recovery/:SetField properly passed info on non-existent users to express-user which handles the error.");
+                               CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+                                   Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserBefore) {
+                                       Requester.Request('POST', '/User/Email/ma@ma.ma/Recovery/EmailToken', function(Status, Body) {
+                                           Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserAfter) {
+                                               Test.ok(Status === 200 && UserBefore.EmailToken !== UserAfter.EmailToken, "Confirming that POST /User/:Field/:ID/Recovery/:SetField handles proper requests properly by passing them to express-user.");
+                                               Test.done();
+                                           });
+                                       }, {}, true);
+                                   });
+                               });
+                           }, {}, true);
+                        }, {}, true);
+                    }, {}, true);
+                }, {}, true);
+            }, {}, true);
+        }, {}, true);
     }
 };
 
@@ -739,7 +836,9 @@ exports.NoFieldHidingInViewSetup = {
     },
     'GET /User/Self': function(Test) {
         Test.expect(0);
-        Test.done();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Test.done();
+        });
     },
     'GET /User/:Field/:ID': function(Test) {
         Test.expect(0);

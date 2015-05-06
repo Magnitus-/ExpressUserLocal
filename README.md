@@ -102,6 +102,25 @@ While keeping in mind that details will probably change in the future, you can p
 
 In order to avoid an email server dependency just to run the example (days of fun for the uninitiated), the example uses a mock call that justs prints the email address and token of a newly registered user on the console rather than try to send an actual email.
 
+Future Development
+==================
+
+Here are some potential improvements I'd find desirable for the project. Note however that at this point, the project as it is meets my personal needs so consider those changes long terms goals for the project.
+
+- Access hiaerchy: 
+
+Atm, access privileges are rather flat as anybody who has view/edit/delete privileges can view/edit/delete anyone else.
+
+Ideally, you'd pass an hierachy array of groups and groups couldn't modify those higher in the array.
+
+This would require an additional RestrictedGroups argument to be passed to express-user during a request which would be passed to user-store which would tailor its query to exclude documents/rows where Memberships contains one of those restricted groups.
+
+- Custom Verification
+
+At this point, Email verification, while optional, is hard coded into the project.
+
+Eventually, it would be desirable to add a customiseable hook architecture for verification instead with the Email Verification hook being included with the project.
+
 History
 =======
 
@@ -109,10 +128,12 @@ History
 --------------
 
 - More tests
+- Bit of refactoring
 - Updated user-properties dependency to version 3.4.0
 - Changed handling of URL parameters to parse fields as dictated by the user schema.
 - Added validation for the email authentication field in the PUT /User/Self/Memberships/Validated route.
 - Indicated the nuances for different errors in the PUT /User/Self/Memberships/Validated and made the errors most consistent with the rest of the library.
+- Added handlers for the PUT /User/:Field/:ID/Memberships/:Membership and the DELETE /User/:Field/:ID/Memberships/:Membership routes.
 
 0.0.1-alpha.18
 --------------
