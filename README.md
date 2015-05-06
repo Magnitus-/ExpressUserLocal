@@ -134,6 +134,7 @@ History
 - Added validation for the email authentication field in the PUT /User/Self/Memberships/Validated route.
 - Indicated the nuances for different errors in the PUT /User/Self/Memberships/Validated and made the errors most consistent with the rest of the library.
 - Added handlers for the PUT /User/:Field/:ID/Memberships/:Membership and the DELETE /User/:Field/:ID/Memberships/:Membership routes.
+- Fixed bug where certain options that can have a falsey value would be ignored when they do.
 
 0.0.1-alpha.18
 --------------

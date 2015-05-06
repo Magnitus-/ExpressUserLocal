@@ -828,22 +828,31 @@ exports.BasicSetup = {
 
 exports.NoFieldHidingInViewSetup = {
     'setUp': function(Callback) {
-        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'HideSecret': false};
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'HideRestricted': false};
         Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
     },
     'tearDown': function(Callback) {
         TearDown(Callback);
     },
     'GET /User/Self': function(Test) {
-        Test.expect(0);
+        Test.expect(1);
         var Requester = new RequestHandler();
         CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
-            Test.done();
+            Requester.Request('GET', '/User/Self', function(Status, Body) {
+                Test.ok(Body.Username==='Magnitus' && Body.Address === 'Vinvin du finfin' && Body.Email === 'ma@ma.ma' && Body.Gender === 'M' && Body.Age === 999 && Body.Password && Body.EmailToken && Body._id, "Confirming that GET /User/Self retrieves user from session and does not hide any field.");
+                Test.done();
+            }, {}, true);
         });
     },
     'GET /User/:Field/:ID': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Requester.Request('GET', '/User/Username/Magnitus', function(Status, Body) {
+                Test.ok(Body.Username==='Magnitus' && Body.Address === 'Vinvin du finfin' && Body.Email === 'ma@ma.ma' && Body.Gender === 'M' && Body.Age === 999 && Body.Password && Body.EmailToken && Body._id, "Confirming that GET /User/Self retrieves user from session and does not hide any field.");
+                Test.done();
+            }, {}, true);
+        }, true);
     }
 }
 
@@ -856,24 +865,45 @@ exports.NoAdminSetup = {
         TearDown(Callback);
     },
     'PATCH /User/:Field/:ID': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that DELETE /User/:Field/:ID is not validated");
+                Test.done();
+            }, {'Update': {'Username': 'Magnitus2'}}, true);
+        }, true);
     },
     'DELETE /User/:Field/:ID': function(Test) {
-        Test.expect(0);
-        Test.done();
+        Test.expect(1);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Requester.Request('DELETE', '/User/Username/Magnitus', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that DELETE /User/:Field/:ID is not validated");
+                Test.done();
+            }, {}, true);
+        }, true);
     },
     'GET /User/:Field/:ID': function(Test) {
         Test.expect(0);
-        Test.done();
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Test.done();
+        }, true);
     },
     'PUT /User/:Field/:ID/Memberships/:Membership': function(Test) {
         Test.expect(0);
-        Test.done();
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Test.done();
+        }, true);
     },
     'DELETE /User/:Field/:ID/Memberships/:Membership': function(Test) {
         Test.expect(0);
-        Test.done();
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Test.done();
+        }, true);
     }
 }
 
