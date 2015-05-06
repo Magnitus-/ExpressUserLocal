@@ -836,6 +836,7 @@ exports.NoFieldHidingInViewSetup = {
     },
     'GET /User/Self': function(Test) {
         Test.expect(0);
+        var Requester = new RequestHandler();
         CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
             Test.done();
         });
