@@ -286,7 +286,7 @@ function EmailTokenValidation(Value)
     }
 }
 
-function GetUserSchema()
+function GetUserSchema(NoEmail)
 {
     var UserSchema = UserProperties({'Username': {
                       'Required': true,
@@ -334,6 +334,13 @@ function GetUserSchema()
                       'Access': 'System',
                       'Sources': ['MongoDB']
                   }});
+    
+    if(NoEmail)
+    {
+        delete UserSchema['Email'];
+        delete UserSchema['EmailToken'];
+    }
+    
     return UserSchema;
 }
 
@@ -885,29 +892,45 @@ exports.NoAdminSetup = {
         }, true);
     },
     'GET /User/:Field/:ID': function(Test) {
-        Test.expect(0);
+        Test.expect(1);
         var Requester = new RequestHandler();
         CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
-            Test.done();
+            Requester.Request('GET', '/User/Username/Magnitus', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that GET /User/:Field/:ID is not validated");
+                Test.done();
+            }, {}, true);
         }, true);
     },
     'PUT /User/:Field/:ID/Memberships/:Membership': function(Test) {
-        Test.expect(0);
+        Test.expect(1);
         var Requester = new RequestHandler();
         CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
-            Test.done();
+            Requester.Request('PUT', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that PUT /User/:Field/:ID/Memberships/:Membership is not validated");
+                Test.done();
+            }, {}, true);
         }, true);
     },
     'DELETE /User/:Field/:ID/Memberships/:Membership': function(Test) {
-        Test.expect(0);
+        Test.expect(1);
         var Requester = new RequestHandler();
         CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
-            Test.done();
+            Requester.Request('DELETE', '/User/Username/Magnitus/Memberships/Test', function(Status, Body) {
+                Test.ok(Body.ErrType === "NotValidated" && Body.ErrSource === "ExpressUser", "Confirming that DELETE /User/:Field/:ID/Memberships/:Membership is not validated");
+                Test.done();
+            }, {}, true);
         }, true);
     }
 }
 
 exports.NoEmailVerificationSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(true)};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    }
 }
 
 exports.NumericalParamsSetup = {

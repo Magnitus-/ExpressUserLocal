@@ -8,7 +8,7 @@ The structure is pretty stable at this point, but I'll keep the alpha label unti
 Known Bug(s)
 ============
 
-...
+When a user's email is changed in the Patch routes, steps are not taken to make the user validate the new email. This will be fixed in upcoming releases.
 
 Usage
 =====
@@ -98,6 +98,8 @@ These already require the user to input his password (to modify or delete his ac
 Example
 =======
 
+Notice: Changes have been made that may break the example until I incorporate those changes in the express-user-local-basic project.
+
 While keeping in mind that details will probably change in the future, you can play with what is currently there, by running the Example.js server (you'll need the dev dependencies to run it) and going to the following adress in your browser: http://127.0.0.1:8080/
 
 In order to avoid an email server dependency just to run the example (days of fun for the uninitiated), the example uses a mock call that justs prints the email address and token of a newly registered user on the console rather than try to send an actual email.
@@ -131,10 +133,12 @@ History
 - Bit of refactoring
 - Updated user-properties dependency to version 3.4.0
 - Changed handling of URL parameters to parse fields as dictated by the user schema.
-- Added validation for the email authentication field in the PUT /User/Self/Memberships/Validated route.
+- Added missing validation for the email authentication field in the PUT /User/Self/Memberships/Validated route.
 - Indicated the nuances for different errors in the PUT /User/Self/Memberships/Validated and made the errors most consistent with the rest of the library.
-- Added handlers for the PUT /User/:Field/:ID/Memberships/:Membership and the DELETE /User/:Field/:ID/Memberships/:Membership routes.
-- Fixed bug where certain options that can have a falsey value would be ignored when they do.
+- Implemented handlers for the PUT /User/:Field/:ID/Memberships/:Membership and the DELETE /User/:Field/:ID/Memberships/:Membership routes.
+- Fixed bug where certain options that can be defined with a falsey values would be ignored when they do.
+- Updated dev dependencies of user-store and express-user to versions 2.1.0 and 1.1.1.
+- Removed regex-email from dev dependencies as its already in the dependencies
 
 0.0.1-alpha.18
 --------------
