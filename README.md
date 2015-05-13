@@ -8,7 +8,14 @@ The structure is pretty stable at this point, but I'll keep the alpha label unti
 Known Bug(s)
 ============
 
-When a user's email is changed in the Patch routes, steps are not taken to make the user validate the new email. This will be fixed in upcoming releases.
+...
+
+Doc Notice
+==========
+
+Some of the present doc is dated.
+
+Doc overhaul will proceed once tests are complete (soon).
 
 Usage
 =====
@@ -123,8 +130,25 @@ At this point, Email verification, while optional, is hard coded into the projec
 
 Eventually, it would be desirable to add a customiseable hook architecture for verification instead with the Email Verification hook being included with the project.
 
+- More Fine Grained Brute Force Routing
+
+Currently, only one brute force handler is applied to all routes that have brute force protection.
+
+Eventually, I'd like to provide constructor options to give more fine-grained control concerning applying various brute force handlers to various routes.
+
+- Custom Route Disabling (or greater privilege requirements)
+
+Eventually, I'd like to provide more fine-grained constructor options so that you can optionally disable certain routes or assign to them greater privilege requirements.
+
 History
 =======
+
+0.0.1-alpha.20
+--------------
+
+- More tests
+- Added PUT /User/:Field/:ID/Memberships/:Membership and DELETE /User/:Field/:ID/Memberships/:Membership to the list of routes the optional Csrf handler is applied to.
+- Changed functionality such that when the email field is updated, a new email token is generated and user validation is reset.
 
 0.0.1-alpha.19
 --------------

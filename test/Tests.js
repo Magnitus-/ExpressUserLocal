@@ -215,37 +215,9 @@ function CreateAndLogin(Requester, Credentials, Callback, Elevate)
     }, {'User': Credentials}, false);
 }
 
-var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Next) {
-    if(Res.locals.ExpressUser)
-    {
-        if(Res.locals.ExpressUser.Result===undefined)
-        {
-            Res.status(200).end();
-        }
-        else if(typeof(Res.locals.ExpressUser.Result) === typeof(0))
-        {
-            Res.status(200).json({'Count': Res.locals.ExpressUser.Result});
-        }
-        else
-        {
-            if(Res.locals.ExpressUser.Hide)
-            {
-                Res.locals.ExpressUser.Hide.forEach(function(ToHide) {
-                    delete Res.locals.ExpressUser.Result[ToHide];
-                });
-            }
-            Res.status(200).json(Res.locals.ExpressUser.Result);
-        }
-    }
-    else
-    {
-        Next();
-    }
-}};
-
-var FakeCrsf = function(Req, Res, Next)
+var FakeCsrf = function(Req, Res, Next)
 {
-    Res.locals.FakeCrsf = true;
+    Res.locals.FakeCsrf = true;
     Next();
 }
 
@@ -273,6 +245,32 @@ var FakeEmail = function(Req, Res, Next)
     
 }
 
+var SuccessRouteFake = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Next) {
+    var FakeResult = {};
+    if(Res.locals.FakeCsrf)
+    {
+        FakeResult['Csrf'] = true;
+    }
+    if(Res.locals.FakeBrute)
+    {
+        FakeResult['Brute'] = true;
+    }
+    Res.status(200).json(FakeResult);
+}};
+
+var SuccessRouteFakeErr = {'Method': 'use', 'Path': '/', 'Call': function(Err, Req, Res, Next) {
+    var FakeResult = {};
+    if(Res.locals.FakeCsrf)
+    {
+        FakeResult['Csrf'] = true;
+    }
+    if(Res.locals.FakeBrute)
+    {
+        FakeResult['Brute'] = true;
+    }
+    Res.status(400).json(FakeResult);
+}};
+
 //Crafted this way to test non-null requirement outside the validator, but still test for validation by trying strings with length less than 4
 function EmailTokenValidation(Value)
 {
@@ -288,7 +286,7 @@ function EmailTokenValidation(Value)
 
 function GetUserSchema(NoEmail)
 {
-    var UserSchema = UserProperties({'Username': {
+    var UserSchema = {'Username': {
                       'Required': true,
                       'Unique': true,
                       'Mutable': false,
@@ -333,13 +331,14 @@ function GetUserSchema(NoEmail)
                       'Privacy': UserProperties.Privacy.Private,
                       'Access': 'System',
                       'Sources': ['MongoDB']
-                  }});
+                  }};
     
     if(NoEmail)
     {
-        delete UserSchema['Email'];
         delete UserSchema['EmailToken'];
     }
+    
+    UserSchema = UserProperties(UserSchema);
     
     return UserSchema;
 }
@@ -354,6 +353,34 @@ function In()
         }));
     }));
 }
+
+var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Next) {
+    if(Res.locals.ExpressUser)
+    {
+        if(Res.locals.ExpressUser.Result===undefined)
+        {
+            Res.status(200).end();
+        }
+        else if(typeof(Res.locals.ExpressUser.Result) === typeof(0))
+        {
+            Res.status(200).json({'Count': Res.locals.ExpressUser.Result});
+        }
+        else
+        {
+            if(Res.locals.ExpressUser.Hide)
+            {
+                Res.locals.ExpressUser.Hide.forEach(function(ToHide) {
+                    delete Res.locals.ExpressUser.Result[ToHide];
+                });
+            }
+            Res.status(200).json(Res.locals.ExpressUser.Result);
+        }
+    }
+    else
+    {
+        Next();
+    }
+}};
 
 exports.BasicSetup = {
     'setUp': function(Callback) {
@@ -830,6 +857,43 @@ exports.BasicSetup = {
                 }, {}, true);
             }, {}, true);
         }, {}, true);
+    },
+    'EmailValidationAndUpdate': function(Test) {
+        Test.expect(6);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
+                Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                    Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserFirst) {
+                        Test.ok(UserFirst && In(UserFirst.Memberships, 'Validated'), "Confirming that user is validated");
+                        Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                            Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserSecond) {
+                                Test.ok(UserSecond && In(UserSecond.Memberships, 'Validated') && UserFirst.EmailToken === UserSecond.EmailToken, "Confirming that PATCH /User/Self does not affect validation or email token when email is unchanged.");
+                                Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                                    Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserSecond) {
+                                        Test.ok(UserSecond && !(In(UserSecond.Memberships, 'Validated')) && UserFirst.EmailToken !== UserSecond.EmailToken, "Confirming that PATCH /User/Self devalidates user and changes email token when email is changed.");
+                                        Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
+                                            Test.ok(Status===200, "Confirming that user is validated");
+                                            Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                                                Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserThird) {
+                                                    Test.ok(UserThird && In(UserThird.Memberships, 'Validated') && UserThird.EmailToken === UserSecond.EmailToken, "Confirming that PATCH /User/:Field/:ID does not affect validation or email token when email is unchanged.");
+                                                    Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                                                        Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserFourth) {
+                                                            Test.ok(UserFourth && (!In(UserFourth.Memberships, 'Validated')) && UserThird.EmailToken !== UserFourth.EmailToken, "Confirming that PATCH /User/:Field/:ID devalidates user and changes email token when email is changed.");
+                                                            Test.done();
+                                                        });
+                                                    }, {'Update': {'Address': 'DoesNotMatter', 'Email': 'ma3@ma.ma'}}, true);
+                                                });
+                                            }, {'Update': {'Address': 'DoesNotMatter'}}, true);
+                                        }, {'User': {'EmailToken': UserSecond.EmailToken}}, true);
+                                    });
+                                }, {'User': {'Password': 'hahahihihoho'}, 'Update': {'Address': 'DoesNotMatter', 'Email': 'ma2@ma.ma'}}, true);
+                            });
+                        }, {'User': {'Password': 'hahahihihoho'}, 'Update': {'Address': 'DoesNotMatter'}}, true);
+                    });
+                }, {'User': {'EmailToken': User.EmailToken}}, true);
+            });
+        }, true);
     }
 };
 
@@ -923,6 +987,74 @@ exports.NoAdminSetup = {
     }
 }
 
+function GenerateRouteTests(RouteVar, UseRoute, DoesntUseRoute)
+{
+    return(function(Test) {
+        var Requester = new RequestHandler();
+        Test.expect(UseRoute.length+DoesntUseRoute.length);
+        var Calls = [];
+        UseRoute.forEach(function(Item) {
+            Calls.push(function(Callback) {
+                Requester.Request(Item['Method'], Item['Url'], function(Status, Body) {
+                    Test.ok(Body[RouteVar], "Confirming that "+RouteVar+" route gets applied to "+Item['Method']+" "+Item['Url']+" route.");
+                    Callback();
+                }, {}, true);
+            });
+        });
+        DoesntUseRoute.forEach(function(Item) {
+            Calls.push(function(Callback) {
+                Requester.Request(Item['Method'], Item['Url'], function(Status, Body) {
+                    Test.ok(!Body[RouteVar], "Confirming that "+RouteVar+" route does not get applied to "+Item['Method']+" "+Item['Url']+" route.");
+                    Callback();
+                }, {}, true);
+            });
+        });
+        Nimble.parallel(Calls, function(Err) {Test.done();});
+    });
+}
+
+var BruteRoutes = [{'Method': 'PATCH', 'Url': '/User/Self'}, {'Method': 'DELETE', 'Url': '/User/Self'}, {'Method': 'PUT', 'Url': '/Session/Self/User'}, {'Method': 'PUT', 'Url': '/User/Self/Memberships/Validated'}, {'Method': 'POST', 'Url': '/Users'}, {'Method': 'POST', 'Url': '/User/Email/donotcare@ca.ca/Recovery/Password'}];
+var NoBruteRoutes = [{'Method': 'GET', 'Url': '/User/Self'}, {'Method': 'DELETE', 'Url': '/Session/Self/User'}, {'Method': 'GET', 'Url': '/Users/Username/Magnitus/Count'}, {'Method': 'PATCH', 'Url': '/User/Username/Magnitus'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus'}, {'Method': 'GET', 'Url': '/User/Username/Magnitus'}, {'Method': 'PUT', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus/Memberships/Admin'}];
+
+exports.BruteRouteSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'BruteForceRoute': FakeBrute};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRouteFake, SuccessRouteFakeErr], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'Main': GenerateRouteTests('Brute', BruteRoutes, NoBruteRoutes)
+}
+
+var CsrfRoutes = [{'Method': 'PUT', 'Url': '/Session/Self/User'}, {'Method': 'DELETE', 'Url': '/Session/Self/User'}, {'Method': 'PATCH', 'Url': '/User/Username/Magnitus'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus'}, {'Method': 'PUT', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'PUT', 'Url': '/User/Self/Memberships/Validated'}, {'Method': 'POST', 'Url': '/User/Email/donotcare@ca.ca/Recovery/Password'}];
+var NoCsrfRoutes = [{'Method': 'GET', 'Url': '/User/Self'}, {'Method': 'PATCH', 'Url': '/User/Self'}, {'Method': 'DELETE', 'Url': '/User/Self'}, {'Method': 'POST', 'Url': '/Users'}, {'Method': 'GET', 'Url': '/Users/Username/Magnitus/Count'}, {'Method': 'GET', 'Url': '/User/Username/Magnitus'}];
+
+exports.CsrfRouteSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'CsrfRoute': FakeCsrf};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRouteFake, SuccessRouteFakeErr], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'Main': GenerateRouteTests('Csrf', CsrfRoutes, NoCsrfRoutes)
+}
+
+var MaxCsrfRoutes = [{'Method': 'PUT', 'Url': '/Session/Self/User'}, {'Method': 'DELETE', 'Url': '/Session/Self/User'}, {'Method': 'PATCH', 'Url': '/User/Username/Magnitus'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus'}, {'Method': 'PUT', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'PUT', 'Url': '/User/Self/Memberships/Validated'}, {'Method': 'POST', 'Url': '/User/Email/donotcare@ca.ca/Recovery/Password'}, {'Method': 'PATCH', 'Url': '/User/Self'}, {'Method': 'DELETE', 'Url': '/User/Self'}, {'Method': 'POST', 'Url': '/Users'}];
+var MaxNoCsrfRoutes = [{'Method': 'GET', 'Url': '/User/Self'}, {'Method': 'GET', 'Url': '/Users/Username/Magnitus/Count'}, {'Method': 'GET', 'Url': '/User/Username/Magnitus'}];
+
+exports.NonMinimalCsrfRouteSetup = {
+    'setUp': function(Callback) {
+        var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(), 'CsrfRoute': FakeCsrf, 'MinimalCsrf': false};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRouteFake, SuccessRouteFakeErr], Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'Main': GenerateRouteTests('Csrf', MaxCsrfRoutes, MaxNoCsrfRoutes)
+}
+
 exports.NoEmailVerificationSetup = {
     'setUp': function(Callback) {
         var ExpressUserLocalOptions = {'UserSchema': GetUserSchema(true)};
@@ -936,20 +1068,9 @@ exports.NoEmailVerificationSetup = {
 exports.NumericalParamsSetup = {
 }
 
-exports.BruteRouteSetup = {
-}
-
-exports.CrsfRouteSetup = {
-}
-
-exports.NonMinimalCrsfRouteSetup = {
-}
-
-
-
 exports.ConnectionSecurity = {
     'setUp': function(Callback) {
-        var ExpressUserLocalOptions = {'BruteForceRoute': FakeBrute, 'CsrfRoute': FakeCrsf, 'ConnectionSecurity': function() {return false;}};
+        var ExpressUserLocalOptions = {'BruteForceRoute': FakeBrute, 'CsrfRoute': FakeCsrf, 'ConnectionSecurity': function() {return false;}};
         Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Callback);
     },
     'tearDown': function(Callback) {
