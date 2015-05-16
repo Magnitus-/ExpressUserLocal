@@ -1,106 +1,97 @@
 Express-User-Local
 ==================
 
-Module to validate incoming requests using a local strategy (username, email, password) for the express-user library.
+Module to validate incoming requests using a local strategy (username, email, password) and a persistent session for the express-user library.
 
-The structure is pretty stable at this point, but I'll keep the alpha label until unit tests and doc are finalized.
+This is a validator in the validator/store/responder architecture described in the express-user project.
 
-Known Bug(s)
+Requirements
 ============
 
-...
+Beyond the requirements from the package.json file and those described in the express-user dependency, this project requires:
 
-Doc Notice
-==========
+- A session library: Either express-session or one that behaves just like it.
+- A brute-force routing library like express-brute (optional if you want to pass a brute force handler to the constructor)
+- A csrf routing library like csurf (optional if you want to pass a csrf handler to the constructor)
 
-Some of the present doc is dated.
-
-Doc overhaul will proceed once tests are complete (soon).
 
 Usage
 =====
 
+Overview
+--------
+
+This library is callable as a function and which returns a validator which can be passed directly to the express-user library.
+
+The code would look like this:
+
 ```javascript
-//See the example in the express-user project for the entire code
 
-//Some code
-
+//Some other requires
 var ExpressUser = require('express-user');
 var ExpressUserLocal = require('express-user-local');
 
-var UserLocal = ExpressUserLocal(UserLocalOptions);                   //More details on available options below
-var UserRouter = ExpressUser(UserStore, {'Validator': UserLocal});    //Generate our main router to pass to Express, using our UserLocal validator
-App.use(ExpressUser.SessionRoute(UserStore, '_id'));                  //Sync Req.session.User with the user's profile in the database. _id is used as a immutable field that won't change for any user.
-App.use(UserRouter);                                                  //Pass our router to express
+//Define options to pass to express-user-local
+//Define the responder as well, more details about that part in final version of express-user-local-basic project
+
+var Validator = ExpressUserLocal(UserLocalOptions);                                           //More details on available options below
+var UserRouter = ExpressUser(UserStore, {'Validator': Validator, 'Responder': Responder});    //Generate our main router to pass to Express
+App.use(ExpressUser.SessionRoute(UserStore, '_id'));                                          //Sync Req.session.User with the user's profile in the database. _id is used as a immutable field that won't change for any user.
+App.use(UserRouter);                                                                          //Pass our router to express
 ```
 
 Options
 -------
 
-- EmailRegex: Regular expression used to validate emails. Defaults to the regex-email project.
+express-user-local takes an options object as its sole argument. The belows are the options you can set on the object and their expected format.
 
-- UsernameRegex: Regular expression used to validate user names. Defaults to something that must start with a letter, is 20 characters long at most and must contain alphanumerical characters and/or the '+', '-' or '.' characters. 
+- ConnectionSecurity: A function that takes the signature function(req) and returns true if the connection is secure, else false
 
-- PasswordRegex: Regular expression used to validate passwords. Defaults to any characters, between 8 and 20 characters long.
+- Roles: Defines what groups have super-user privileges to view, edit and delete profiles.
 
-- BruteForceRoute: Route used to handle brute-force attacks on password or email token dependant requests ("PUT /Session/Self/User", "PATCH /User/Self", "DELETE /User/Self" and "PUT /User/Self/Memberships/Validated"). See the example in the express-user project for an implementation using express-brute.
+It is an object containing 3 keys: 'Edit', 'Delete' and 'Get'. Each key contains an array of groups (strings) that possess the accompanying privilege (granted by special admin routes described in the architecture).
 
-- HideSecret: Specifies that secret fields shouldn't be returned for GET requests. Defaults to True. Very important to prevent users from seeing their email verification token from their account.
+Setting either the Roles object or some of its keys to null will disable corresponding admin routes.
 
-- UserSchema: Schema object that specifies a user's fields and their properties. It defaults to this (see user-properties project for details):
+- EmailRegex: Regular expression that ensures email addresses provided email addresses are well formed if the default user schema is used.
 
-```javascript
-{
-    'Username': {
-        'Required': true,
-        'Unique': true,
-        'Mutable': false,
-        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Username'].test(Value)}
-    },
-    'Email': {
-        'Required': true,
-        'Unique': true,
-        'Privacy': UserProperties.Privacy.Private,
-        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Email'].test(Value)}
-    },
-    'Password': {
-        'Required': true,
-        'Privacy': UserProperties.Privacy.Secret,
-        'Retrievable': false,
-        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Password'].test(Value)},
-        'Sources': ['User', 'Auto'],
-        'Generator': function(Callback) {Callback(null, Uid(15));}
-    },
-    'EmailToken': {
-        'Required': true,
-        'Privacy': UserProperties.Privacy.Secret,
-        'Retrievable': false,
-        'Access': 'Email',
-        'Sources': ['Auto'],
-        'Generator': function(Callback) {Callback(null, Uid(20));}
-    }
-}
-```
+- UsernameRegex: Regular expression that ensures email addresses provided usernames are well formed if the default user schema is used.
 
-- CsrfRoute: Route that enforces Csrf token verification (see the example in express-user for an implementation making use of the csurf project). It can be set to null (if you want to fine tune csrf protection yourself for example).
+- PasswordRegex: Regular expression that ensures email addresses provided passwords are well formed if the default user schema is used.
 
-- MinimalCsrf: Boolean value that defaults to true.
+- BruteForceRoute: ...
 
-With this default, the admin "PATCH /User/:Field/:ID" and "DELETE /User/:Field/:ID" requests check for the Csrf token as well as the "PUT /Session/Self/User", "DELETE /Session/Self/User" and "PUT /User/Self/Memberships/Validated" requests.
+- CsrfRoute: ...
 
-The both requests are protected because they are the main attack surface for csrf attacks.
+- MinimalCsrf: ...
 
-login/logout have been added to the default protection to foil potential attack vectors if an attacker managed to login someone under his account and to prevent potential loss of trust from users if an attacker manages to log them out from an external web page.
+- HideRestricted: ...
 
-If MinimalCsrf is set to false, the following requests also check for the csrf token:
+- EmailField: ...
 
--PUT /Users
+- UserSchema: ...
 
-Probably pointless to protect. A user motivated to abuse the account creation may as well create a standalone script that fetches the login form and accompanying csrf token, parse the form to retrieve the token and perform the request.
+Defaults
+--------
 
--PATCH /User/Self and DELETE /User/Self
+Options have the given default values when they are not defined in the object passed to express-user-local:
 
-These already require the user to input his password (to modify or delete his account respectively) making the csrf token check redundant. Besides, as with the login, if a third party website convinces your user to input his password for your web site on theirs, his account is already compromised.
+- ConnectionSecurity: A function that returns true if the requester's IP is 127.0.0.1 or if req.secure is true
+- Roles: ```javascript {'Edit': ['Admin'], 'Delete': ['Admin'], 'Get': ['Admin']}```
+- EmailRegex: Regular expression provided by the regex-email project
+- UsernameRegex: ```javascript new RegExp("^[a-zA-Z][\\w\\+\\-\\.]{0,19}$");```
+- PasswordRegex: ```javascript new RegExp("^.{8,20}$");```
+- BruteForceRoute: ...
+- CsrfRoute: ...
+- MinimalCsrf: ...
+- HideRestricted: ...
+- EmailField: ...
+- UserSchema: ...
+
+Architecture
+============
+
+...
 
 Example
 =======
@@ -113,6 +104,8 @@ In order to avoid an email server dependency just to run the example (days of fu
 
 Future Development
 ==================
+
+- Finish tests for :Field/:ID parametric URLs where ID is non-string
 
 Here are some potential improvements I'd find desirable for the project. Note however that at this point, the project as it is meets my personal needs so consider those changes long terms goals for the project.
 
@@ -142,6 +135,14 @@ Eventually, I'd like to provide more fine-grained constructor options so that yo
 
 History
 =======
+
+1.0.0
+-----
+
+- More tests
+- Changed functionality such that when there is not email authentication, PUT /User/Self/Memberships/Validated flags a lack of validation error, not a lack of access error
+- Changed default email verification to allow at most 80 characters long email addresses
+- Documentation
 
 0.0.1-alpha.20
 --------------

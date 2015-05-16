@@ -1,7 +1,7 @@
 {
   "name": "express-user-local",
-  "version": "0.0.1-alpha.20",
-  "description": "Basic validator for a local authentication scheme for express-user.",
+  "version": "1.0.0",
+  "description": "Validator for a local session based authentication scheme for express-user.",
   "keywords": [
     "Express",
     "Middleware",
