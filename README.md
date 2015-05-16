@@ -77,10 +77,10 @@ Defaults
 Options have the given default values when they are not defined in the object passed to express-user-local:
 
 - ConnectionSecurity: A function that returns true if the requester's IP is 127.0.0.1 or if req.secure is true
-- Roles: ```javascript {'Edit': ['Admin'], 'Delete': ['Admin'], 'Get': ['Admin']}```
+- Roles: ```{'Edit': ['Admin'], 'Delete': ['Admin'], 'Get': ['Admin']}```
 - EmailRegex: Regular expression provided by the regex-email project
-- UsernameRegex: ```javascript new RegExp("^[a-zA-Z][\\w\\+\\-\\.]{0,19}$");```
-- PasswordRegex: ```javascript new RegExp("^.{8,20}$");```
+- UsernameRegex: ```new RegExp("^[a-zA-Z][\\w\\+\\-\\.]{0,19}$");```
+- PasswordRegex: ```new RegExp("^.{8,20}$");```
 - BruteForceRoute: ...
 - CsrfRoute: ...
 - MinimalCsrf: ...
