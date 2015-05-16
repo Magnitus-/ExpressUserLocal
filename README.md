@@ -11,8 +11,8 @@ Requirements
 Beyond the requirements from the package.json file and those described in the express-user dependency, this project requires:
 
 - A session library: Either express-session or one that behaves just like it.
-- A brute-force routing library like express-brute (optional if you want to pass a brute force handler to the constructor)
-- A csrf routing library like csurf (optional if you want to pass a csrf handler to the constructor)
+- A brute-force routing library like express-brute (if you want to pass a brute force handler to the constructor)
+- A csrf routing library like csurf (if you want to pass a csrf handler to the constructor)
 
 
 Usage
