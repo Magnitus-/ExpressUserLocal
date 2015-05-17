@@ -138,10 +138,10 @@ UserProperties({
     }});
 ```
 
-Authenticating Email
-====================
+Email Verification
+==================
 
-Email authentication is handled through secret email token generation in this library.
+Email verification is handled through secret email token generation in this library.
 
 It will only be enabled is you have a field in your UserSchema that fulfills the following criteria:
 
@@ -163,8 +163,41 @@ The 'POST /Users' route will automatically generate an email token for the user,
 
 Both 'PATCH' routes will generate a new email token for the user and remove his 'Validated' membership if 'EmailField' (the field you defined in the constructor's options as being the user's email) is changed.
 
+Access Restriction
+==================
+
+All the '/User/Self' routes require the user to be logged in.
+
+The following routes require a logged in user with 'Edit' privileges:
+
+PATCH /User/:Field/:ID
+PUT /User/:Field/:ID/Memberships/:Membership
+
+The following routes require a logged in user with 'Delete' privileges:
+
+DELETE /User/:Field/:ID
+DELETE /User/:Field/:ID/Memberships/:Membership
+
+The following routes require a logged in user with 'Get' privileges:
+
+GET /User/:Field/:ID
+
+Additionally, 'Field' in the following route can only be a public field unless the user is logged in with 'Get' privileges:
+
+GET /Users/:Field/:ID/Count
+
 Disabled URLs
 =============
+
+The following urls are not handled by express-user-local:
+
+PUT /User/Self/Memberships/:Membership
+DELETE /User/Self/Memberships/:Membership
+POST /User/Self/Recovery/:SetField
+
+However, the following instance of 'PUT /User/Self/Memberships/:Membership' is enabled if email verification is used:
+
+PUT /User/Self/Memberships/Validated
 
 Expected Input From Request
 ===========================
@@ -178,11 +211,146 @@ All field values (including those passed in the url) are validated using the 'Va
 
 And finally, field values that are passed in the url will be parsed using the 'Parse' method of the UserSchema before being validated. The default 'Parse' method of user-properties will return the value as-is so it's only necessary to define it for non-string values.
 
+POST /Users
+-----------
 
+...
 
+PATCH /User/Self
+----------------
+
+...
+
+DELETE /User/Self
+-----------------
+
+...
+
+GET /User/Self
+--------------
+
+...
+
+PUT /Session/Self/User
+----------------------
+
+...
+
+DELETE /Session/Self/User
+-------------------------
+
+...
+
+GET /Users/:Field/:ID/Count
+---------------------------
+
+...
+
+PUT /User/Self/Memberships/Validated
+------------------------------------
+
+...
+
+POST /User/:Field/:ID/Recovery/:SetField
+----------------------------------------
+
+...
+
+PATCH /User/:Field/:ID
+----------------------
+
+...
+
+DELETE /User/:Field/:ID
+-----------------------
+
+...
+
+GET /User/:Field/:ID
+--------------------
+
+...
+
+PUT /User/:Field/:ID/Memberships/:Membership
+--------------------------------------------
+
+...
+
+DELETE /User/:Field/:ID/Memberships/:Membership
+-----------------------------------------------
+
+...
 
 Output to Other Components
 ==========================
+
+POST /Users
+-----------
+
+...
+
+PATCH /User/Self
+----------------
+
+...
+
+DELETE /User/Self
+-----------------
+
+...
+
+GET /User/Self
+--------------
+
+...
+
+PUT /Session/Self/User
+----------------------
+
+...
+
+DELETE /Session/Self/User
+-------------------------
+
+...
+
+GET /Users/:Field/:ID/Count
+---------------------------
+
+...
+
+PUT /User/Self/Memberships/Validated
+------------------------------------
+
+...
+
+POST /User/:Field/:ID/Recovery/:SetField
+----------------------------------------
+
+...
+
+PATCH /User/:Field/:ID
+----------------------
+
+...
+
+DELETE /User/:Field/:ID
+-----------------------
+
+...
+
+GET /User/:Field/:ID
+--------------------
+
+...
+
+PUT /User/:Field/:ID/Memberships/:Membership
+--------------------------------------------
+
+...
+
+DELETE /User/:Field/:ID/Memberships/:Membership
+-----------------------------------------------
 
 ...
 
@@ -235,7 +403,7 @@ History
 - More tests
 - Changed functionality such that when there is not email authentication, PUT /User/Self/Memberships/Validated flags a lack of validation error, not a lack of access error
 - Changed default email verification to allow at most 80 characters long email addresses
-- Documentation
+- Started Documentation
 
 0.0.1-alpha.20
 --------------
