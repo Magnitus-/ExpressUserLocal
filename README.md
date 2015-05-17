@@ -14,7 +14,6 @@ Beyond the requirements from the package.json file and those described in the ex
 - A brute-force routing library like express-brute (if you want to pass a brute force handler to the constructor)
 - A csrf routing library like csurf (if you want to pass a csrf handler to the constructor)
 
-
 Usage
 =====
 
@@ -59,9 +58,18 @@ Setting either the Roles object or some of its keys to null will disable corresp
 
 - PasswordRegex: Regular expression that ensures email addresses provided passwords are well formed if the default user schema is used.
 
-- BruteForceRoute: ...
+- BruteForceRoute: An handler to check against brute force attacks which will be applied to the following routes...
 
-- CsrfRoute: ...
+PATCH /User/Self
+DELETE /User/Self
+PUT /Session/Self/User
+PUT /User/Self/Memberships/Validated
+POST /User/:Field/:ID/Recovery/:SetField
+POST /Users
+
+The philosophy behing which routes are protected is the following: Prevent an attacker from guessing private/secret fields through trial-and-error 
+
+- CsrfRoute: An handler to check for a valid csrf token which will be applied to the following routes...
 
 - MinimalCsrf: ...
 
@@ -81,15 +89,100 @@ Options have the given default values when they are not defined in the object pa
 - EmailRegex: Regular expression provided by the regex-email project
 - UsernameRegex: ```new RegExp("^[a-zA-Z][\\w\\+\\-\\.]{0,19}$");```
 - PasswordRegex: ```new RegExp("^.{8,20}$");```
-- BruteForceRoute: ...
-- CsrfRoute: ...
-- MinimalCsrf: ...
-- HideRestricted: ...
-- EmailField: ...
-- UserSchema: ...
+- BruteForceRoute: null (not brute force handler is applied)
+- CsrfRoute: null (not csrf handler is applied)
+- MinimalCsrf: true
+- HideRestricted: true
+- EmailField: 'Email'
+- UserSchema: 
 
-Architecture
-============
+```javascript
+var UserProperties = require('user-properties');
+var Uid = require('uid-safe').sync;
+
+//...
+
+var Verifications ={'Username': Options.EmailRegex, 'Email': Options.EmailRegex, 'Password': Options.PasswordRegex};
+
+//...
+
+//If Options.UserSchema is not defined, it is assigned this:
+UserProperties({
+    'Username': {
+        'Required': true,
+        'Unique': true,
+        'Mutable': false,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Username'].test(Value)}
+    },
+    'Email': {
+        'Required': true,
+        'Unique': true,
+        'Privacy': UserProperties.Privacy.Private,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Email'].test(Value)&&Value.length&&(Value.legth<=80)}
+    },
+    'Password': {
+        'Required': true,
+        'Privacy': UserProperties.Privacy.Secret,
+        'Retrievable': false,
+        'Description': function(Value) {return (typeof(Value)!='undefined')&&Verifications['Password'].test(Value)},
+        'Sources': ['User', 'Auto'],
+        'Generator': function(Callback) {Callback(null, Uid(15));}
+    },
+    'EmailToken': {
+        'Required': true,
+        'Privacy': UserProperties.Privacy.Secret,
+        'Retrievable': false,
+        'Access': 'Email',
+        'Sources': ['Auto'],
+        'Generator': function(Callback) {Callback(null, Uid(20));}
+    }});
+```
+
+Authenticating Email
+====================
+
+Email authentication is handled through secret email token generation in this library.
+
+It will only be enabled is you have a field in your UserSchema that fulfills the following criteria:
+
+```javascript
+//This call returns suitable fields
+function GetEmailToken(UserSchema)
+{
+    return UserProperties.ListIntersection(UserProperties.ListIntersection(UserSchema.ListEditable('Email'), UserSchema.ListAuth('Email')), UserSchema.ListGeneratable());
+}
+```
+
+Basically, the field must be secret, generatable automatically, accessible via email, required and mutable.
+
+If a field that fulfills these criteria is present in your schema, the following will occur:
+
+The 'PUT /User/Self/Memberships/Validated' route will be defined, allowing users to add 'Validated' to their memberships if they submit their email token in the request
+
+The 'POST /Users' route will automatically generate an email token for the user, using the generator you defined in your schema.
+
+Both 'PATCH' routes will generate a new email token for the user and remove his 'Validated' membership if 'EmailField' (the field you defined in the constructor's options as being the user's email) is changed.
+
+Disabled URLs
+=============
+
+Expected Input From Request
+===========================
+
+Overall Field Correctness
+-------------------------
+
+express-user-local recognizes only on fields defined in the UserSchema passed to the constructor. Any additional fields will be ignored (ie, will be as if those fields weren't present).
+
+All field values (including those passed in the url) are validated using the 'Validate' method of the UserSchema. Additionally, checks are made against null or undefined for mandatory fields.
+
+And finally, field values that are passed in the url will be parsed using the 'Parse' method of the UserSchema before being validated. The default 'Parse' method of user-properties will return the value as-is so it's only necessary to define it for non-string values.
+
+
+
+
+Output to Other Components
+==========================
 
 ...
 
