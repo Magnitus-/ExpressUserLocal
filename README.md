@@ -60,24 +60,51 @@ Setting either the Roles object or some of its keys to null will disable corresp
 
 - BruteForceRoute: An handler to check against brute force attacks which will be applied to the following routes...
 
+```
 PATCH /User/Self
 DELETE /User/Self
 PUT /Session/Self/User
 PUT /User/Self/Memberships/Validated
 POST /User/:Field/:ID/Recovery/:SetField
 POST /Users
+```
 
 The philosophy behing which routes are protected is the following: Prevent an attacker from guessing private/secret fields through trial-and-error 
 
 - CsrfRoute: An handler to check for a valid csrf token which will be applied to the following routes...
 
-- MinimalCsrf: ...
+```
+PATCH /User/:Field/:ID
+DELETE /User/:Field/:ID
+PUT /User/:Field/:ID/Memberships/:Membership
+DELETE /User/:Field/:ID/Memberships/:Membership
+PUT /Session/Self/User
+PUT /User/Self/Memberships/Validated (if email verification is enabled)
+POST /User/:Field/:ID/Recovery/:SetField
+```
 
-- HideRestricted: ...
+In short, routes that don't require authentication in the request and perform exploitable actions are protected.
 
-- EmailField: ...
+- MinimalCsrf: If set to false, the csrf handler is applied to the following routes as well:
 
-- UserSchema: ...
+```
+POST /Users
+PATCH /User/Self
+DELETE /User/Self
+PUT /User/Self/Memberships/Validated
+```
+
+- HideRestricted: If set to true, the library tells the responder to hide sensitive ('Privacy' is secret) or non-accessible ('Access' property is not 'User') fields for the GET /User/Self route.
+
+- EmailField: Tells the libray which field in UserSchema corresponds to the user's email. If email verification is enabled, the library will use this value to determine if the user's email is being changed in the PATCH routes.
+
+- UserSchema: Instance of the user-properties project which tells the library what fields it can expect a user to have and their properties. This argument has a profound impact on the library's behavior and setting the right properties for various user fields is crucial for security purposes.
+
+In terms of expectations, your UserSchema should at least contains a field suitable for login identification and a field that is suitable for authentification.
+
+A field suitable for login identification is one that is listed in the following (required, unique, not public and accessible either by user or his email): ```UserProperties.ListUnion(UserSchema.ListLogin('User'), UserSchema.ListLogin('Email'))```
+
+A field suitable for authentication is one that is listed in the following (secret, required, accessible by user): ```UserSchema.ListAuth('User')```
 
 Defaults
 --------
@@ -191,9 +218,9 @@ Disabled URLs
 
 The following urls are not handled by express-user-local:
 
-PUT /User/Self/Memberships/:Membership
-DELETE /User/Self/Memberships/:Membership
-POST /User/Self/Recovery/:SetField
+- PUT /User/Self/Memberships/:Membership
+- DELETE /User/Self/Memberships/:Membership
+- POST /User/Self/Recovery/:SetField
 
 However, the following instance of 'PUT /User/Self/Memberships/:Membership' is enabled if email verification is used:
 
@@ -201,6 +228,17 @@ PUT /User/Self/Memberships/Validated
 
 Expected Input From Request
 ===========================
+
+Request Body
+------------
+
+express-user-local expect the request's body to be an object contained in req.body. As such, you'll need a body parser (like the body-parser project) to parse the bodies of requests and store them in req.body.
+
+The library reads 2 properties in the body object: User and Update (sometimes one, sometimes both, sometimes neither). Both req.body.User and req.body.Update, when present, are expected to be objects.
+
+The req.body.User object defines user field values that either identifies an existing user or creates a new one.
+
+The req.body.Update object defines user field values that an existing user will be updated with.
 
 Overall Field Correctness
 -------------------------
@@ -403,6 +441,7 @@ History
 - More tests
 - Changed functionality such that when there is not email authentication, PUT /User/Self/Memberships/Validated flags a lack of validation error, not a lack of access error
 - Changed default email verification to allow at most 80 characters long email addresses
+- Made the PUT /User/Self/Memberships/Validated route use csrf only if MinimalCsrf is set to true
 - Started Documentation
 
 0.0.1-alpha.20

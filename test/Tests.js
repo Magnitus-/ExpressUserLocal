@@ -1137,8 +1137,8 @@ exports.BruteRouteSetup = {
     'Main': GenerateRouteTests('Brute', BruteRoutes, NoBruteRoutes)
 }
 
-var CsrfRoutes = [{'Method': 'PUT', 'Url': '/Session/Self/User'}, {'Method': 'DELETE', 'Url': '/Session/Self/User'}, {'Method': 'PATCH', 'Url': '/User/Username/Magnitus'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus'}, {'Method': 'PUT', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'PUT', 'Url': '/User/Self/Memberships/Validated'}, {'Method': 'POST', 'Url': '/User/Email/donotcare@ca.ca/Recovery/Password'}];
-var NoCsrfRoutes = [{'Method': 'GET', 'Url': '/User/Self'}, {'Method': 'PATCH', 'Url': '/User/Self'}, {'Method': 'DELETE', 'Url': '/User/Self'}, {'Method': 'POST', 'Url': '/Users'}, {'Method': 'GET', 'Url': '/Users/Username/Magnitus/Count'}, {'Method': 'GET', 'Url': '/User/Username/Magnitus'}];
+var CsrfRoutes = [{'Method': 'PUT', 'Url': '/Session/Self/User'}, {'Method': 'DELETE', 'Url': '/Session/Self/User'}, {'Method': 'PATCH', 'Url': '/User/Username/Magnitus'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus'}, {'Method': 'PUT', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'DELETE', 'Url': '/User/Username/Magnitus/Memberships/Admin'}, {'Method': 'POST', 'Url': '/User/Email/donotcare@ca.ca/Recovery/Password'}];
+var NoCsrfRoutes = [{'Method': 'GET', 'Url': '/User/Self'}, {'Method': 'PATCH', 'Url': '/User/Self'}, {'Method': 'DELETE', 'Url': '/User/Self'}, {'Method': 'POST', 'Url': '/Users'}, {'Method': 'GET', 'Url': '/Users/Username/Magnitus/Count'}, {'Method': 'GET', 'Url': '/User/Username/Magnitus'}, {'Method': 'PUT', 'Url': '/User/Self/Memberships/Validated'}];
 
 exports.CsrfRouteSetup = {
     'setUp': function(Callback) {
