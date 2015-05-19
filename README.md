@@ -249,88 +249,208 @@ All field values (including those passed in the url) are validated using the 'Va
 
 And finally, field values that are passed in the url will be parsed using the 'Parse' method of the UserSchema before being validated. The default 'Parse' method of user-properties will return the value as-is so it's only necessary to define it for non-string values.
 
+Session Requirement for Self and Admin Routes
+---------------------------------------------
+
+All routes that require a user to be logged in require a Req.session.User object containing the info of the logged in user to be defined.
+
+The express-user project provides a special route to define this object and keep it in sync with the user's profile in the database.
+
 POST /Users
 -----------
 
-...
+- Req.body.User: 
+
+The values for the new user's fields. Fields that are not marked as accessible to users (ie, 'Access' property is 'User') will be ignored.
+
+Fields that are required ('Required' property is true) need to be present. 
+
+Fields that are not required, may or may not be present.
 
 PATCH /User/Self
 ----------------
 
-...
+- Req.session.User: Nees to be properly defined.
+
+- Req.body.User:
+
+Needs to contain a field that authentifies the user ('Acccess' is 'User', 'Privacy' is secret, 'Required' is true) against the user his session points to.
+
+Other fields will be ignored.
+
+- Req.body.Update: 
+
+The values for the fields that are to be updated. Fields that are not user accessible ('Access' is not 'User') or not mutable will be ignored.
 
 DELETE /User/Self
 -----------------
 
-...
+- Req.session.User: Nees to be properly defined.
+
+- Req.body.User:
+
+Needs to contain a field that authentifies the user ('Acccess' is 'User', 'Privacy' is secret, 'Required' is true) against the user his session points to.
+
+Other fields will be ignored.
 
 GET /User/Self
 --------------
 
-...
+- Req.session.User: Nees to be properly defined.
 
 PUT /Session/Self/User
 ----------------------
 
-...
+- Req.body.User:
+
+Needs to contain a field that authentifies the user ('Acccess' is 'User', 'Privacy' is secret, 'Required' is true) against the user his session points to.
+
+Also needs to contain a non public field that identifies the user (required and unique and access is either 'User' or 'Email').
+
+Other fields will be ignored.
 
 DELETE /Session/Self/User
 -------------------------
 
-...
+- Req.session.User: Nees to be properly defined.
 
 GET /Users/:Field/:ID/Count
 ---------------------------
 
-...
+- Req.session.User: Nees to be properly defined to make use of superuser Get access.
+
+- URL Parameters: For regular access, the 'Field' parameter needs to be public. For superuser Get access, 'Field' can be any field in the UserSchema.
+
+Other fields will be ignored.
 
 PUT /User/Self/Memberships/Validated
 ------------------------------------
 
-...
+- Req.session.User: Nees to be properly defined.
+
+- Req.body.User:
+
+Needs to contain a field that authentifies the user's access to his email (required, secret and 'Access' is 'Email').
+
+Other fields will be ignored.
 
 POST /User/:Field/:ID/Recovery/:SetField
 ----------------------------------------
 
-...
+- Req.session.User: Nees to be properly defined.
+
+- URL Parameters:
+
+'Field' needs to be a non public field that identifies the user (required and unique and access is either 'User' or 'Email'). All other fields will be ignored.
+
+'SetField' needs to be a mutable automatically generatable field ('Auto' needs to be amongst the field's Sources). All other fields will be ignored.
 
 PATCH /User/:Field/:ID
 ----------------------
 
-...
+- Req.session.User: Nees to be properly defined. Logged in user needs superuser Edit privileges.
+
+- URL Parameters: 'Field' needs to identify a user (required and unique). All other fields will be ignored.
+
+- Req.body.Update: 
+
+The values for the fields that are to be updated. Fields not defined in UserSchema will be ignored.
+
 
 DELETE /User/:Field/:ID
 -----------------------
 
-...
+- Req.session.User: Nees to be properly defined. Logged in user needs superuser Delete privileges.
+
+- URL Parameters: 'Field' needs to identify a user (required and unique). All other fields will be ignored.
 
 GET /User/:Field/:ID
 --------------------
 
-...
+- Req.session.User: Nees to be properly defined. Logged in user needs superuser Get privileges.
+
+- URL Parameters: 'Field' needs to identify a user (required and unique). All other fields will be ignored.
 
 PUT /User/:Field/:ID/Memberships/:Membership
 --------------------------------------------
 
-...
+- Req.session.User: Nees to be properly defined. Logged in user needs superuser Edit privileges.
+
+- URL Parameters: 
+
+'Field' needs to identify a user (required and unique). All other fields will be ignored.
 
 DELETE /User/:Field/:ID/Memberships/:Membership
 -----------------------------------------------
 
-...
+- Req.session.User: Nees to be properly defined. Logged in user needs superuser Delete privileges.
+
+'Field' needs to identify a user (required and unique). All other fields will be ignored.
 
 Output to Other Components
 ==========================
 
+express-user
+------------
+
+For brevity, the error routes and Res.locals.ExpressUser properties set by express-user won't be repeated here.
+
+It is implied that whenever an error route is not triggered by express-user-local, express-user handles the request after express-user-local.
+
+Read express-user documentation for more details.
+
+Err.Source
+----------
+
+Whenever express-user-local triggers an error (ie, Next(Err)), the error has a source property with the source being "ExpressUserLocal".
+
+Unless otherwise noted, Err.Source will be "ExpressUserLocal".
+
 POST /Users
 -----------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the new user with all the fields from Req.body.User that weren't ignored.
+
+Additionally, if email verification is enabled, the email authentication field will be set with a value returned by its generator from the schema.
+
+- Error Behavior (Next(Err) is called)
+
+If any fields don't pass validation (using the schema's validators) or if any required field is not included, Err.Type will have the value of 'BadField' and Err.Fields will contain all error fields.
+
+If Req.body.User doesn't exist as an object, Err.Type will have the value of 'BadBody'.
 
 PATCH /User/Self
 ----------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying and authentifying the user to update.
+
+The Res.locals.ExpressUser.Update object is set and contains the fields that are to be updated.
+
+Additionally, if email verification is enabled, the following will be set if 'EmailField' is among the fields to be updated:
+
+The Res.locals.ExpressUser.Update object will contain a newly generated value for the email authentication field
+
+Res.locals.ExpressUser.Memberships will be defined and have the value ```{'Remove': 'Validated'}```
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If the user didn't provide authentication in Req.Body.User, Err.Type will have the value of 'NoAuth'.
+
+If the user provides an authentication field tha doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.Fields will contain error fields related to authentication.
+
+If the user doesn't specify any field to update in Req.body.Update (or only ignored fields), Err.Type will have the value of 'NoField'.
+
+If any field in Req.body.Update doesn't pass schema validation, Err.Type will have the value of 'BadFiel' and Err.UpdateFields will contain all error fields related to updates.
+
+If Req.body.User or Req.body.Update don't exist as objects, Err.Type will have the value of 'BadBody'.
+
+Note: Currently, if there is both a validation error in the authentication field and in update fields, only the error in the authentication field will be reported.
 
 DELETE /User/Self
 -----------------
@@ -434,6 +554,11 @@ Eventually, I'd like to provide more fine-grained constructor options so that yo
 
 History
 =======
+
+1.0.1
+-----
+
+More documentation.
 
 1.0.0
 -----
