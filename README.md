@@ -129,7 +129,7 @@ var Uid = require('uid-safe').sync;
 
 //...
 
-var Verifications ={'Username': Options.EmailRegex, 'Email': Options.EmailRegex, 'Password': Options.PasswordRegex};
+var Verifications ={'Username': Options.UsernameRegex, 'Email': Options.EmailRegex, 'Password': Options.PasswordRegex};
 
 //...
 
@@ -440,13 +440,13 @@ Res.locals.ExpressUser.Memberships will be defined and have the value ```{'Remov
 
 If the user is not logged in, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
 
-If the user didn't provide authentication in Req.Body.User, Err.Type will have the value of 'NoAuth'.
+If the user didn't provide authentication in Req.body.User, Err.Type will have the value of 'NoAuth'.
 
 If the user provides an authentication field tha doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.Fields will contain error fields related to authentication.
 
 If the user doesn't specify any field to update in Req.body.Update (or only ignored fields), Err.Type will have the value of 'NoField'.
 
-If any field in Req.body.Update doesn't pass schema validation, Err.Type will have the value of 'BadFiel' and Err.UpdateFields will contain all error fields related to updates.
+If any field in Req.body.Update doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.UpdateFields will contain all error fields related to updates.
 
 If Req.body.User or Req.body.Update don't exist as objects, Err.Type will have the value of 'BadBody'.
 
@@ -455,62 +455,204 @@ Note: Currently, if there is both a validation error in the authentication field
 DELETE /User/Self
 -----------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying and authentifying the user to delete.
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If the user didn't provide authentication in Req.body.User, Err.Type will have the value of 'NoAuth'.
+
+If the user provides an authentication field tha doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.Fields will contain error fields related to authentication.
+
+If Req.body.User doesn't exist as an object, Err.Type will have the value of 'BadBody'.
 
 GET /User/Self
 --------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to get.
+
+If 'HideRestricted' was set to true in the options, the Res.locals.ExpressUser.Hide array will be set and will contain all fields that are secret or not user accessible ('Access' is not 'User').
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
 
 PUT /Session/Self/User
 ----------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying and authentifying the user to set in the session.
+
+- Error Behavior (Next(Err) is called)
+
+If no suitable identification field is provided in Res.locals.ExpressUser.User, Err.Type will have the value of 'NoID'.
+
+If no suitable authentication field is provided in Res.locals.ExpressUser.User, Err.Type will have the value of 'NoAuth'.
+
+If any field in Res.locals.ExpressUser.User doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.Fields will contain error fields related to authentication.
+
+If Req.body.User doesn't exist as an object, Err.Type will have the value of 'BadBody'.
 
 DELETE /Session/Self/User
 -------------------------
 
-...
+- Normal Behavior
+
+Res.locals.ExpressUser will be set to an empty object.
+
+- Error Behavior (Next(Err) is called)
+
+None. express-user handles the error if Req.session.User doesn't exist.
 
 GET /Users/:Field/:ID/Count
 ---------------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields describing users to count.
+
+- Error Behavior (Next(Err) is called)
+
+If 'ID' of 'Field' in the url parameters doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
+
+If 'Field' in the url parameters is not defined in UserSchema, Err.Type will have the value of 'NoField'.
+
+If 'Field' in the url parameters is not public and the requesting user doesn't have superuser Get privileges, Err.Type will have the value of 'PrivateField'.
 
 PUT /User/Self/Memberships/Validated
 ------------------------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to operate on.
+
+The Res.locals.ExpressUser.Membership property is set with the value of 'Validated'.
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If the email authentication field in Res.locals.ExpressUser.User doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
+
+If no email authentication field is present in Res.locals.ExpressUser.User, Err.Type will have the value of 'NoAuth'.
+
+If Req.body.User doesn't exist as an object, Err.Type will have the value of 'BadBody'.
 
 POST /User/:Field/:ID/Recovery/:SetField
 ----------------------------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to operate on.
+
+The Res.locals.ExpressUser.Update object is set and contains a newly generated value for the property 'SetField' to update the user with.
+
+- Error Behavior (Next(Err) is called)
+
+If 'Field' is not a private identifying field, Err.Type will have the value of 'NoID'.
+
+If 'ID' doesn't pass schema validation for 'Field', Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
+
+If 'SetField' is not a mutable user or email accessible field with auto generation, Err.Type will have the value of 'NoAuto'.
 
 PATCH /User/:Field/:ID
 ----------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to update.
+
+The Res.locals.ExpressUser.Update object is set and contains the fields that are to be updated.
+
+Additionally, if email verification is enabled, the following will be set if 'EmailField' is among the fields to be updated:
+
+The Res.locals.ExpressUser.Update object will contain a newly generated value for the email authentication field, assuming that a new value wasn't already present in Res.locals.ExpressUser.Update.
+
+Res.locals.ExpressUser.Memberships will be defined and have the value ```{'Remove': 'Validated'}```
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in with Edit superuser privileges, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If 'Field' is not an identifying field, Err.Type will have the value of 'NoID'.
+
+If 'ID' doesn't pass schema validation for 'Field', Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
+
+If the user doesn't specify any field to update in Req.body.Update (or only ignored fields), Err.Type will have the value of 'NoField'.
+
+If any field in Req.body.Update doesn't pass schema validation, Err.Type will have the value of 'BadField' and Err.UpdateFields will contain all error fields related to updates.
+
+If Req.body.Update don't exist as objects, Err.Type will have the value of 'BadBody'.
 
 DELETE /User/:Field/:ID
 -----------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to delete.
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in with Delete superuser privileges, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If 'Field' is not an identifying field, Err.Type will have the value of 'NoID'.
+
+If 'ID' doesn't pass schema validation for 'Field', Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
 
 GET /User/:Field/:ID
 --------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to get.
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in with Get superuser privileges, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If 'Field' is not an identifying field, Err.Type will have the value of 'NoID'.
+
+If 'ID' doesn't pass schema validation for 'Field', Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
 
 PUT /User/:Field/:ID/Memberships/:Membership
 --------------------------------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to operate on.
+
+The Res.locals.ExpressUser.Membership property is set with the value of the 'Membership' parameter.
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in with Edit superuser privileges, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If 'Field' is not an identifying field, Err.Type will have the value of 'NoID'.
+
+If 'ID' doesn't pass schema validation for 'Field', Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
 
 DELETE /User/:Field/:ID/Memberships/:Membership
 -----------------------------------------------
 
-...
+- Normal Behavior
+
+The Res.locals.ExpressUser.User object is set and contains the fields identifying the user to operate on.
+
+The Res.locals.ExpressUser.Membership property is set with the value of the 'Membership' parameter.
+
+- Error Behavior (Next(Err) is called)
+
+If the user is not logged in with Delete superuser privileges, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
+
+If 'Field' is not an identifying field, Err.Type will have the value of 'NoID'.
+
+If 'ID' doesn't pass schema validation for 'Field', Err.Type will have the value of 'BadField' and Err.Fields will be an array containing the erronous field.
 
 Example
 =======
@@ -554,6 +696,13 @@ Eventually, I'd like to provide more fine-grained constructor options so that yo
 
 History
 =======
+
+1.0.2
+-----
+
+- Finished documentation
+- Added tests for GET /Users/:Field/:ID/Count route with admin routes disabled
+- Fixed crash for GET /Users/:Field/:ID/Count route when admin routes are disabled
 
 1.0.1
 -----

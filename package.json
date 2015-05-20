@@ -1,6 +1,6 @@
 {
   "name": "express-user-local",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Validator for a local session based authentication scheme for express-user.",
   "keywords": [
     "Express",
