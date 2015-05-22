@@ -413,7 +413,7 @@ POST /Users
 
 The Res.locals.ExpressUser.User object is set and contains the new user with all the fields from Req.body.User that weren't ignored.
 
-Additionally, if email verification is enabled, the email authentication field will be set with a value returned by its generator from the schema.
+Additionally, if email verification is enabled, the email authentication field will be set with a value returned by its generator from the schema and Res.locals.ExpressUser.Generated will be defined as an array of one element listing the email authentication field.
 
 - Error Behavior (Next(Err) is called)
 
@@ -433,6 +433,8 @@ The Res.locals.ExpressUser.Update object is set and contains the fields that are
 Additionally, if email verification is enabled, the following will be set if 'EmailField' is among the fields to be updated:
 
 The Res.locals.ExpressUser.Update object will contain a newly generated value for the email authentication field
+
+Res.locals.ExpressUser.Generated will be defined as an array of one element listing the email authentication field.
 
 Res.locals.ExpressUser.Memberships will be defined and have the value ```{'Remove': 'Validated'}```
 
@@ -576,6 +578,8 @@ The Res.locals.ExpressUser.Update object will contain a newly generated value fo
 
 Res.locals.ExpressUser.Memberships will be defined and have the value ```{'Remove': 'Validated'}```
 
+If an email authentication field was generated in Res.locals.ExpressUser.Update, Res.locals.ExpressUser.Generated will be defined as an array of one element listing the field.
+
 - Error Behavior (Next(Err) is called)
 
 If the user is not logged in with Edit superuser privileges, express-access-control will set Err.Source to 'ExpressAccessControl' and Err.Type to 'NoAccess'.
@@ -696,6 +700,11 @@ Eventually, I'd like to provide more fine-grained constructor options so that yo
 
 History
 =======
+
+1.1.0
+-----
+
+Added Res.locals.ExpressUser.Generated list when fields are automatically generated, to better convey it to the responder.
 
 1.0.2
 -----

@@ -357,9 +357,13 @@ function In()
 var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Next) {
     if(Res.locals.ExpressUser)
     {
-        if(Res.locals.ExpressUser.Result===undefined)
+        if(Res.locals.ExpressUser.Result === undefined && Res.locals.ExpressUser.Generated === undefined)
         {
             Res.status(200).end();
+        }
+        else if(Res.locals.ExpressUser.Generated)
+        {
+            Res.status(200).json({'Generated': Res.locals.ExpressUser.Generated});
         }
         else if(typeof(Res.locals.ExpressUser.Result) === typeof(0))
         {
@@ -419,12 +423,14 @@ function GetCoreTests(Route, EmailValidation)
                         Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
                             if(EmailValidation)
                             {
-                                var TestResult = Status===200 && User.Username==='Magnitus' && User.Email === 'ma@ma.ma' && User.EmailToken;
+                                var Generated = Body && Body.Generated && Body.Generated.length === 1 && In(Body.Generated, 'EmailToken');
+                                var TestResult = Status===200 && User.Username==='Magnitus' && User.Email === 'ma@ma.ma' && User.EmailToken && Generated;
                                 var TestMessage = "Confirming that POST /Users with only required fields work and that email authentication is generated.";
                             }
                             else
                             {
-                                var TestResult = Status===200 && User.Username==='Magnitus' && User.Email === 'ma@ma.ma';
+                                var Generated = (!Body);
+                                var TestResult = Status===200 && User.Username==='Magnitus' && User.Email === 'ma@ma.ma' && Generated;
                                 var TestMessage = "Confirming that POST /Users with only required fields work.";
                             }
                             Test.ok(TestResult, TestMessage);
@@ -441,7 +447,15 @@ function GetCoreTests(Route, EmailValidation)
                 function(Callback) {
                     Requester.Request('POST', '/Users', function(Status, Body) {
                         Context.UserStore.Get({'Username': 'Magnitus2'}, function(Err, User) {
-                            Test.ok(Status===200 && User.Gender === 'M' && User.Age === 999, "Confirming that non-required fields are inserted for POST /Users and that the request validates if all fields validate.");
+                            if(EmailValidation)
+                            {
+                                var Generated = Body && Body.Generated && Body.Generated.length === 1 && In(Body.Generated, 'EmailToken');
+                            }
+                            else
+                            {
+                                var Generated = (!Body);
+                            }
+                            Test.ok(Status===200 && User.Gender === 'M' && User.Age === 999 && Generated, "Confirming that non-required fields are inserted for POST /Users and that the request validates if all fields validate.");
                             Callback();
                         });
                     }, {'User': {'Username': 'Magnitus2', 'Email': 'ma2@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}}, true);
@@ -966,7 +980,7 @@ exports.BasicSetup = {
         }, {}, true);
     },
     'EmailValidationAndUpdate': function(Test) {
-        Test.expect(6);
+        Test.expect(10);
         var Requester = new RequestHandler();
         CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
             Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, User) {
@@ -974,17 +988,21 @@ exports.BasicSetup = {
                     Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserFirst) {
                         Test.ok(UserFirst && In(UserFirst.Memberships, 'Validated'), "Confirming that user is validated");
                         Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                            Test.ok(!Body, "Confirming that lack of field generation is properly conveyed to the responder");
                             Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserSecond) {
                                 Test.ok(UserSecond && In(UserSecond.Memberships, 'Validated') && UserFirst.EmailToken === UserSecond.EmailToken, "Confirming that PATCH /User/Self does not affect validation or email token when email is unchanged.");
                                 Requester.Request('PATCH', '/User/Self', function(Status, Body) {
+                                    Test.ok(Body && Body.Generated && Body.Generated.length === 1 && In(Body.Generated, 'EmailToken'), "Confirming that presence of field generation is properly conveyed to the responder");
                                     Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserSecond) {
                                         Test.ok(UserSecond && !(In(UserSecond.Memberships, 'Validated')) && UserFirst.EmailToken !== UserSecond.EmailToken, "Confirming that PATCH /User/Self devalidates user and changes email token when email is changed.");
                                         Requester.Request('PUT', '/User/Self/Memberships/Validated', function(Status, Body) {
                                             Test.ok(Status===200, "Confirming that user is validated");
                                             Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                                                Test.ok(!Body, "Confirming that lack of field generation is properly conveyed to the responder");
                                                 Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserThird) {
                                                     Test.ok(UserThird && In(UserThird.Memberships, 'Validated') && UserThird.EmailToken === UserSecond.EmailToken, "Confirming that PATCH /User/:Field/:ID does not affect validation or email token when email is unchanged.");
                                                     Requester.Request('PATCH', '/User/Username/Magnitus', function(Status, Body) {
+                                                        Test.ok(Body && Body.Generated && Body.Generated.length === 1 && In(Body.Generated, 'EmailToken'), "Confirming that presence of field generation is properly conveyed to the responder");
                                                         Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserFourth) {
                                                             Test.ok(UserFourth && (!In(UserFourth.Memberships, 'Validated')) && UserThird.EmailToken !== UserFourth.EmailToken, "Confirming that PATCH /User/:Field/:ID devalidates user and changes email token when email is changed.");
                                                             Test.done();
