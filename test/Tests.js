@@ -948,7 +948,7 @@ exports.BasicSetup = {
     'DELETE /User/:Field/:ID/Memberships/:Membership': GetCoreTests('DELETE /User/:Field/:ID/Memberships/:Membership', true),
     'POST /User/Self/Recovery/:SetField': GetCoreTests('POST /User/Self/Recovery/:SetField', true),
     'POST /User/:Field/:ID/Recovery/:SetField': function(Test) {
-        Test.expect(7);
+        Test.expect(8);
         var Requester = new RequestHandler();
         Requester.Request('POST', '/User/Username/Magnitus/Recovery/EmailToken', function(Status, Body) {
             Test.ok(Body.ErrType === "NoID" && Body.ErrSource === "ExpressUserLocal", "Confirming that POST /User/:Field/:ID/Recovery/:SetField requires Field to be private.");
@@ -965,6 +965,7 @@ exports.BasicSetup = {
                                CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
                                    Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserBefore) {
                                        Requester.Request('POST', '/User/Email/ma@ma.ma/Recovery/EmailToken', function(Status, Body) {
+                                           Test.ok(Body && Body.Generated && Body.Generated.length === 1 && In(Body.Generated, 'EmailToken'), "Confirming that presence of field generation is properly conveyed to the responder");
                                            Context.UserStore.Get({'Username': 'Magnitus'}, function(Err, UserAfter) {
                                                Test.ok(Status === 200 && UserBefore.EmailToken !== UserAfter.EmailToken, "Confirming that POST /User/:Field/:ID/Recovery/:SetField handles proper requests properly by passing them to express-user.");
                                                Test.done();

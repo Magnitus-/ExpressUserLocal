@@ -555,6 +555,8 @@ The Res.locals.ExpressUser.User object is set and contains the fields identifyin
 
 The Res.locals.ExpressUser.Update object is set and contains a newly generated value for the property 'SetField' to update the user with.
 
+Res.locals.ExpressUser.Generated will be defined as an array of one element listing the generated field.
+
 - Error Behavior (Next(Err) is called)
 
 If 'Field' is not a private identifying field, Err.Type will have the value of 'NoID'.
@@ -700,6 +702,11 @@ Eventually, I'd like to provide more fine-grained constructor options so that yo
 
 History
 =======
+
+1.1.1
+-----
+
+Added missing doc and test for POST /User/:Field/:ID/Recovery/:SetField route with regard to setting Res.locals.ExpressUser.Generated.
 
 1.1.0
 -----
