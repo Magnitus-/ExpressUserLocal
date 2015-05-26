@@ -557,6 +557,8 @@ The Res.locals.ExpressUser.Update object is set and contains a newly generated v
 
 Res.locals.ExpressUser.Generated will be defined as an array of one element listing the generated field.
 
+Res.locals.ExpressUser.GetUpdatedUser will be set to true if the url parameter 'Field' is not EmailField. This is in order to give the responder access to the account's email address without having to access the user store. 
+
 - Error Behavior (Next(Err) is called)
 
 If 'Field' is not a private identifying field, Err.Type will have the value of 'NoID'.
@@ -700,8 +702,20 @@ Eventually, I'd like to provide constructor options to give more fine-grained co
 
 Eventually, I'd like to provide more fine-grained constructor options so that you can optionally disable certain routes or assign to them greater privilege requirements.
 
+- Password Recovery Link
+
+Would desirable if password recovery emailed to the user a password recovery link which when visited would either email a newly generated password or allow a user to input one.
+
+This would prevent an attack vector (mostly inconvenience) where someone who knows another user's email could inconvenience him by arbitrarily generating random passwords on his account.
+
 History
 =======
+
+1.2.0
+-----
+
+- Updated express-user and user-store dev dependencies to version 1.2.0 and 2.4.2 respectively
+- Fixed a loophole where, depending on the UserSchema, the responder might not find a user's email address in Res.locals.ExpressUser for the POST /User/:Field/:ID/Recovery/:SetField route.
 
 1.1.1
 -----

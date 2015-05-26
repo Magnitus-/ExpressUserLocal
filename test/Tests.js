@@ -284,7 +284,7 @@ function EmailTokenValidation(Value)
     }
 }
 
-function GetUserSchema(NoEmailToken)
+function GetUserSchema(NoEmailToken, GetUpdatedUser)
 {
     var UserSchema = {'Username': {
                       'Required': true,
@@ -338,6 +338,11 @@ function GetUserSchema(NoEmailToken)
         delete UserSchema.EmailToken;
     }
     
+    if(GetUpdatedUser)
+    {   //Need another suitable login field besides email to test POST /User/:Field/:ID/Recovery/:SetField
+        UserSchema.Username.Privacy = UserProperties.Privacy.Private;
+    }
+    
     UserSchema = UserProperties(UserSchema);
     
     return UserSchema;
@@ -362,8 +367,13 @@ var SuccessRoute = {'Method': 'use', 'Path': '/', 'Call': function(Req, Res, Nex
             Res.status(200).end();
         }
         else if(Res.locals.ExpressUser.Generated)
-        {
-            Res.status(200).json({'Generated': Res.locals.ExpressUser.Generated});
+        {   
+            var ToReturn = {'Generated': Res.locals.ExpressUser.Generated};
+            if(Res.locals.ExpressUser.Result)
+            {
+                ToReturn['Result'] = Res.locals.ExpressUser.Result;
+            }
+            Res.status(200).json(ToReturn);
         }
         else if(typeof(Res.locals.ExpressUser.Result) === typeof(0))
         {
@@ -1275,6 +1285,30 @@ exports.NoEmailVerificationSetup = {
                 }, {}, true);
             }, {}, true);
         }, {}, true);
+    }
+}
+
+exports.GetUpdatedUser = {
+    'setUp': function(Callback) {
+        var Schema = GetUserSchema(false, true);
+        var ExpressUserLocalOptions = {'UserSchema': Schema};
+        Setup(ExpressUserLocal(ExpressUserLocalOptions), [SuccessRoute], Schema, Callback);
+    },
+    'tearDown': function(Callback) {
+        TearDown(Callback);
+    },
+    'Main': function(Test) {
+        Test.expect(2);
+        var Requester = new RequestHandler();
+        CreateAndLogin(Requester, {'Username': 'Magnitus', 'Email': 'ma@ma.ma', 'Password': 'hahahihihoho', 'Address': 'Vinvin du finfin', 'Gender': 'M', 'Age': 999}, function() {
+            Requester.Request('POST', '/User/Username/Magnitus/Recovery/Password', function(Status, Body) {
+                Test.ok(Body.Result && Body.Result.Email === 'ma@ma.ma', "Confirming that POST /User/:Field/:ID/Recovery/:SetField route flags GetUpdateUser when 'Field' is not the email.");
+                Requester.Request('POST', '/User/Email/ma@ma.ma/Recovery/Password', function(Status, Body) {
+                    Test.ok(!Body.Result, "Confirming that POST /User/:Field/:ID/Recovery/:SetField route does not flag GetUpdateUser when 'Field' is not the email.");
+                    Test.done();
+                }, {}, true);
+            }, {}, true);
+        });
     }
 }
 
