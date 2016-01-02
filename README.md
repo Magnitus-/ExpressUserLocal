@@ -711,6 +711,11 @@ This would prevent an attack vector (mostly inconvenience) where someone who kno
 History
 =======
 
+1.2.1
+-----
+
+- Fixed a small bug when account validation is enabled where the DELETE /User/Self/Memberships/Validated request would be handled by the authentication without further actions instead of just being ignored.
+
 1.2.0
 -----
 
